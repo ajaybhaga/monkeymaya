@@ -11,6 +11,7 @@ FSS.Geometry = function() {
 FSS.Geometry.prototype = {
   update: function() {
     if (this.dirty) {
+      //console.log('Recalculating triangle centroids and normals.');
       var t,triangle;
       for (t = this.triangles.length - 1; t >= 0; t--) {
         triangle = this.triangles[t];
@@ -20,19 +21,5 @@ FSS.Geometry.prototype = {
       this.dirty = false;
     }
     return this;
-  },
-  shake: function() {
-    var dx, dy;
-    var damt = 0.4;
-
-    for (var i = this.vertices.length; i--; ) {
-      dx =  Math.random()*damt;
-      dy =  -Math.random()*damt;
-
-      var vertex = this.vertices[i];
-      this.vertices[i] = [vertex[0] + dx, vertex[1] + dy];
-      console.log(this.vertices[i]);
-    }
-
   }
 };

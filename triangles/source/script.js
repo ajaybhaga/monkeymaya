@@ -1,5 +1,7 @@
 (function(){
 
+  var impulse = 0.0;
+
   //------------------------------
   // Mesh Properties
   //------------------------------
@@ -123,7 +125,7 @@
       }
 
       // Update depth of the triangles
-      update();
+      update(0);
       // Render the canvas
       render();
 
@@ -228,13 +230,15 @@
   }
 
   function createMesh2() {
-    scene.remove(mesh);
+    //scene.remove(mesh);
     renderer.clear();
-    //geometry.shake();
+
     //geometry = new FSS.Plane(MESH.width * renderer.width, MESH.height * renderer.height, MESH.slices);
-    material = new FSS.Material(MESH.ambient, MESH.diffuse);
-    mesh = new FSS.Mesh(geometry, material);
-    scene.add(mesh);
+    //material = new FSS.Material(MESH.ambient, MESH.diffuse);
+    //mesh = new FSS.Mesh(geometry, material);
+    //scene.add(mesh);
+
+    geometry.dirty = true;
 
     // Augment vertices for depth modification
     var v, vertex;
@@ -242,18 +246,34 @@
     var dx, dy;
     var damt = 0.4;
 
+    // Cache Variables
+    var x, y,
+      offsetX = this.width * -0.5,
+      offsetY = this.height * 0.5;
+
     for (v = geometry.vertices.length - 1; v >= 0; v--) {
       vertex = geometry.vertices[v];
 
       dx =  Math.random()*damt;
       dy =  -Math.random()*damt;
 
-      vertex.setPosition(vertex.position[0], vertex.position[1], vertex.position[2]);
+      x =  vertex.position[0] + dx + 1;//+ Math.random()*width;
+      y =  vertex.position[1] + dy;//- Math.random()*height;
 
+      //vertices[i] = [x, y];
 
-      vertex.depth = Math.randomInRange(0, MESH.maxdepth/10);
-      vertex.anchor = FSS.Vector3.clone(vertex.position);
+      var v3 = FSS.Vector3.clone(vertex.position);
+      FSS.Vector3.setX(v3, x);
+      FSS.Vector3.setY(v3, y);
+      vertex.position = v3;
+      geometry.vertices[v] = vertex;
+
+      //console.log('geometry.vertices[v]:' , geometry.vertices[v]);
+      //vertex.depth = Math.randomInRange(0, MESH.maxdepth/10);
+      //vertex.anchor = FSS.Vector3.clone(vertex.position);
     }
+
+    //geometry.update();
   }
 
 
@@ -278,7 +298,8 @@
   }
 
   function addLights() {
-    var num = Math.floor(Math.random() * 4) + 1;
+    //var num = Math.floor(Math.random() * 4) + 1;
+    var num = 1;
 
     for (var i = num - 1; i >= 0; i--) {
       addLight();
@@ -307,12 +328,17 @@
   }
 
   function animate() {
-    update();
+    update(impulse);
     render();
     requestAnimationFrame(animate);
+
+    impulse -= impulse * 0.5;
+    if (impulse < 0) {
+      impulse = 0;
+    }
   }
 
-  function update() {
+  function update(vibFactor) {
     var v, vertex, offset = MESH.depth/100;
 
     // Add depth to Vertices
@@ -320,6 +346,15 @@
       vertex = geometry.vertices[v];
       FSS.Vector3.set(vertex.position, 1, 1, vertex.depth*offset);
       FSS.Vector3.add(vertex.position, vertex.anchor);
+
+      var dx =  Math.random()*vibFactor;
+      var dy =  -Math.random()*vibFactor;
+      //x =  vertex.position[0] + dx + 1;//+ Math.random()*width;
+      //y =  vertex.position[1] + dy;//- Math.random()*height;
+
+      //vertices[i] = [x, y];
+      var delta = FSS.Vector3.create(dx, dy, 0);
+      FSS.Vector3.add(vertex.position, delta);
     }
 
     // Set the Geometry to dirty
@@ -505,9 +540,10 @@
   // Pick up the light when a space is pressed
   Mousetrap.bind('space', function() {
 //    LIGHT.pickedup = !LIGHT.pickedup;
-    createMesh2();
-    requestAnimationFrame(animate);
-    console.log('render frame');
+    //createMesh();
+    impulse += 5.0;
+    //requestAnimationFrame(animate);
+
   });
 
 

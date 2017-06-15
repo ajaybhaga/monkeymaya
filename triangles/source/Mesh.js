@@ -12,7 +12,7 @@ FSS.Mesh = function(geometry, material) {
 
 FSS.Mesh.prototype = Object.create(FSS.Object.prototype);
 
-FSS.Mesh.prototype.update = function(lights, calculate) {
+FSS.Mesh.prototype.update = function(renderer, lights, calculate) {
   var t,triangle, l,light, illuminance;
 
   // Update Geometry
@@ -26,7 +26,8 @@ FSS.Mesh.prototype.update = function(lights, calculate) {
       triangle = this.geometry.triangles[t];
 
       // Reset Triangle Color
-      FSS.Vector4.set(triangle.color.rgba);
+      //FSS.Vector4.set(triangle.color.rgba);
+      FSS.Vector4.set(getTriangleColor(triangle.centroid, renderer));
 
       // Iterate through Lights
       for (l = lights.length - 1; l >= 0; l--) {

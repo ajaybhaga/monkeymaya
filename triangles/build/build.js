@@ -31,6 +31,7 @@ var FILE_ENCODING = 'utf-8',
         'WebGLRenderer.js',
         'SVGRenderer.js',
         'dat.gui.js',
+        'loadgif.js',
         'script.js'
     ];
 

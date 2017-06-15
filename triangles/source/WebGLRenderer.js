@@ -98,7 +98,7 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
     for (m = scene.meshes.length - 1; m >= 0; m--) {
       mesh = scene.meshes[m];
       if (mesh.geometry.dirty) update = true;
-      mesh.update(scene.lights, false);
+      mesh.update(this, scene.lights, false);
       vertices += mesh.geometry.triangles.length*3;
     }
 

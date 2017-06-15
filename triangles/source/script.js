@@ -45,8 +45,10 @@
         light = scene.lights[l];
         FSS.Vector3.set(light.position, x, y, z);
 
-        var diffuse = getRandomColor();
-        var ambient = getRandomColor();
+        //var diffuse = getRandomColor();
+        //var ambient = getRandomColor();
+        var diffuse = '#FFFFFF';
+        var ambient = '#FFFFFF';
 
         light.diffuse.set(diffuse);
         light.diffuseHex = light.diffuse.format();
@@ -177,7 +179,7 @@
     addLights();
     addEventListeners();
     addControls();
-    LIGHT.randomize();
+    //LIGHT.randomize();
     resize(container.offsetWidth, container.offsetHeight);
     animate();
   }
@@ -229,58 +231,10 @@
     }
   }
 
-  function createMesh2() {
-    //scene.remove(mesh);
-    renderer.clear();
-
-    //geometry = new FSS.Plane(MESH.width * renderer.width, MESH.height * renderer.height, MESH.slices);
-    //material = new FSS.Material(MESH.ambient, MESH.diffuse);
-    //mesh = new FSS.Mesh(geometry, material);
-    //scene.add(mesh);
-
-    geometry.dirty = true;
-
-    // Augment vertices for depth modification
-    var v, vertex;
-
-    var dx, dy;
-    var damt = 0.4;
-
-    // Cache Variables
-    var x, y,
-      offsetX = this.width * -0.5,
-      offsetY = this.height * 0.5;
-
-    for (v = geometry.vertices.length - 1; v >= 0; v--) {
-      vertex = geometry.vertices[v];
-
-      dx =  Math.random()*damt;
-      dy =  -Math.random()*damt;
-
-      x =  vertex.position[0] + dx + 1;//+ Math.random()*width;
-      y =  vertex.position[1] + dy;//- Math.random()*height;
-
-      //vertices[i] = [x, y];
-
-      var v3 = FSS.Vector3.clone(vertex.position);
-      FSS.Vector3.setX(v3, x);
-      FSS.Vector3.setY(v3, y);
-      vertex.position = v3;
-      geometry.vertices[v] = vertex;
-
-      //console.log('geometry.vertices[v]:' , geometry.vertices[v]);
-      //vertex.depth = Math.randomInRange(0, MESH.maxdepth/10);
-      //vertex.anchor = FSS.Vector3.clone(vertex.position);
-    }
-
-    //geometry.update();
-  }
-
-
   // Add a single light
   function addLight(ambient, diffuse, x, y, z) {
     ambient = typeof ambient !== 'undefined' ? ambient : LIGHT.ambient;
-    diffuse = typeof diffuse !== 'undefined' ? diffuse : getRandomColor();
+    diffuse = typeof diffuse !== 'undefined' ? diffuse : LIGHT.diffuse;
     x = typeof x !== 'undefined' ? x : LIGHT.xPos;
     y = typeof y !== 'undefined' ? y : LIGHT.yPos;
     z = typeof z !== 'undefined' ? z : LIGHT.zOffset;
@@ -543,6 +497,7 @@
     //createMesh();
     impulse += 5.0;
     //requestAnimationFrame(animate);
+    mesh.update(renderer, scene.lights, true);
 
   });
 
@@ -551,9 +506,21 @@
   // Let there be light!
   initialise();
 
+  // Load gif
+  initGif();
+
+  window.updateRenderer = function() {
+    mesh.update(renderer, scene.lights, true);
+  };
+
+  console.log('window.updateRenderer=',window.updateRenderer);
+
 
 /*  while (1>0) {
     requestAnimationFrame(animate);
   }*/
 
+
+
+  //var window.updateRenderer = mesh.update(scene.lights, true);
 })();

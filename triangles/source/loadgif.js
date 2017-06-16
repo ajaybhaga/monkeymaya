@@ -603,8 +603,13 @@ var playGIF = function(gif, preview) {
   doGet();
 };
 
+function rgbToHex(r, g, b) {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
 // Returns a Vector4 rgba representing triangle color
-function getTriangleColor(centroid, renderer) {
+function getTriangleColor(centroid, bBox, renderer) {
+  //
 
   var count = 0;
   var gradientData = []
@@ -616,24 +621,53 @@ function getTriangleColor(centroid, renderer) {
     //var sy = Math.floor( img.canvas.height * (box.y + box.height/2) / svg.height );
     //var px = img.context.getImageData(sx, sy, 1, 1).data;
 
-    var x = centroid[0];
-    var y = centroid[1];
-    var sx = img.canvas.width * (x / renderer.width);
-    var sy = img.canvas.height * (y / renderer.height);
+    // Cache Variables
+    var offsetX = renderer.width * -0.5;
+    var offsetY = renderer.height * 0.5;
+
+    var x = centroid[0] - offsetX;
+    var y = centroid[1] + (offsetY*2);
+    //var sx = img.canvas.width * (x / renderer.width);
+    //var sy = img.canvas.height * (y / renderer.height);
+
+    //console.log('bBox[0]=',bBox[0],'bBox[1]=',bBox[1],'bBox[1]-bBox[0]=',bBox[1]-bBox[0]);
+
+    var sx = Math.floor(img.canvas.width * (x / (bBox[1]-bBox[0])));
+    var sy = Math.floor(img.canvas.height * (y / (bBox[3]-bBox[2])));
+
+    //console.log('sx=',sx,'sy=',sy);
     var px = img.context.getImageData(sx, sy, 1, 1).data;
-    px[0] = 1;
-    px[1] = 0;
-    px[2] = 0;
+
+    //console.log('x=',x);
+    //console.log('y=',y);
+    //console.log('(x / renderer.width)=',(x / (bBox[1]-bBox[0]));
+    //console.log('(y / renderer.height)=',(y / (bBox[3]-bBox[2])));
 
     //console.log('triangle color: ', px);
     // Return rgba
-    return FSS.Vector4.create(px[0], px[1], px[2], 1);
-  } else {
-      console.log('no image loaded');
+
+    //return new FSS.Color(ambient || '#FFFFFF');
+    //return FSS.Vector4.create(px[0], px[1], px[2], 1);
+    //this.rgba
+
+    //console.log('triangle color: ', px);
+
+    /*this.rgba[0] = parseInt(hex.substring(size*0, size*1), 16) / 255;
+    this.rgba[1] = parseInt(hex.substring(size*1, size*2), 16) / 255;
+    this.rgba[2] = parseInt(hex.substring(size*2, size*3), 16) / 255;
+    this.rgba[3] = FSS.Utils.isNumber(opacity) ? opacity : this.rgba[3];*/
+
+    //return FSS.Vector4.create(px[0] / 255, px[1] / 255, px[2] / 255, 1);
+
+    var color = new FSS.Color(rgbToHex(px[0], px[1], px[2]), 1);
+    //console.log('color =',color);
+    return color ;
   }
 
   // Return blank rgba
-  return FSS.Vector4.create(0, 0, 0, 1);
+  var color = new FSS.Color(rgbToHex(0, 0, 0), 1);
+  //console.log('color =',color);
+  return color ;
 }
 
     //fill = "rgb("+px[0]+","+px[1]+","+px[2]+")"

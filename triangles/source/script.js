@@ -11,8 +11,8 @@
     slices: 124,
     depth: 0,
     maxdepth: 200,
-    ambient: '#555555',
-    diffuse: '#FFFFFF'
+    ambient: '#000000',
+    diffuse: '#000000'
   };
 
   //------------------------------
@@ -23,8 +23,8 @@
     xPos : 0,
     yPos : 200,
     zOffset: 100,
-    ambient: '#880066',
-    diffuse: '#FF8800',
+    ambient: '#FFFFFF',
+    diffuse: '#FFFFFF',
     pickedup :true,
     proxy : false,
     currIndex : 0,
@@ -76,7 +76,7 @@
   var CANVAS = 'canvas';
   var SVG = 'svg';
   var RENDER = {
-    renderer: WEBGL
+    renderer: CANVAS
   };
 
   //------------------------------

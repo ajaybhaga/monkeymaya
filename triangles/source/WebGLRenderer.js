@@ -137,10 +137,12 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
                   this.setBufferData(index, buffer, triangle.normal);
                   break;
                 case 'ambient':
-                  this.setBufferData(index, buffer, mesh.material.ambient.rgba);
+                  //this.setBufferData(index, buffer, mesh.material.ambient.rgba);
+                  this.setBufferData(index, buffer, triangle.color.rgba);
                   break;
                 case 'diffuse':
-                  this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
+                  //this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
+                  this.setBufferData(index, buffer, triangle.color.rgba);
                   break;
               }
               index++;

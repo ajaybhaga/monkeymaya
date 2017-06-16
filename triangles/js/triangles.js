@@ -850,13 +850,16 @@ FSS.Mesh.prototype.update = function(renderer, lights, calculate) {
   // Calculate the triangle colors
   if (calculate) {
 
+    //console.log('bBox=',this.getBBox());
+
     // Iterate through Triangles
     for (t = this.geometry.triangles.length - 1; t >= 0; t--) {
       triangle = this.geometry.triangles[t];
 
       // Reset Triangle Color
       //FSS.Vector4.set(triangle.color.rgba);
-      FSS.Vector4.set(getTriangleColor(triangle.centroid, renderer));
+      triangle.color = getTriangleColor(triangle.centroid, this.getBBox(), renderer);
+      //triangle.color = new FSS.Color(rgbToHex(255, 0, 255), 1);
 
       // Iterate through Lights
       for (l = lights.length - 1; l >= 0; l--) {
@@ -889,6 +892,45 @@ FSS.Mesh.prototype.update = function(renderer, lights, calculate) {
     }
   }
   return this;
+};
+
+FSS.Mesh.prototype.getBBox = function() {
+
+  var xMin, xMax, yMin, yMax;
+  var t,triangle;
+
+  xMin = Number.POSITIVE_INFINITY;
+  xMax = Number.NEGATIVE_INFINITY;
+  yMin = Number.POSITIVE_INFINITY;
+  yMax = Number.NEGATIVE_INFINITY;
+
+  // Iterate through Triangles
+  for (t = this.geometry.triangles.length - 1; t >= 0; t--) {
+    triangle = this.geometry.triangles[t];
+    var vertices = triangle.vertices;
+
+    for (i = 0; i < 2; i++) {
+      var vertex = vertices[i];
+
+      if (vertex.position[0] < xMin) {
+        xMin = vertex.position[0];
+      }
+
+      if (vertex.position[0] > xMax) {
+        xMax = vertex.position[0];
+      }
+
+      if (vertex.position[1] < yMin) {
+        yMin = vertex.position[1];
+      }
+
+      if (vertex.position[1] > yMax) {
+        yMax = vertex.position[1];
+      }
+    }
+  }
+
+  return [xMin, xMax, yMin, yMax];
 };
 
 /**
@@ -1150,10 +1192,12 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
                   this.setBufferData(index, buffer, triangle.normal);
                   break;
                 case 'ambient':
-                  this.setBufferData(index, buffer, mesh.material.ambient.rgba);
+                  //this.setBufferData(index, buffer, mesh.material.ambient.rgba);
+                  this.setBufferData(index, buffer, triangle.color.rgba);
                   break;
                 case 'diffuse':
-                  this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
+                  //this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
+                  this.setBufferData(index, buffer, triangle.color.rgba);
                   break;
               }
               index++;
@@ -2183,8 +2227,13 @@ var playGIF = function(gif, preview) {
   doGet();
 };
 
+function rgbToHex(r, g, b) {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
 // Returns a Vector4 rgba representing triangle color
-function getTriangleColor(centroid, renderer) {
+function getTriangleColor(centroid, bBox, renderer) {
+  //
 
   var count = 0;
   var gradientData = []
@@ -2196,24 +2245,53 @@ function getTriangleColor(centroid, renderer) {
     //var sy = Math.floor( img.canvas.height * (box.y + box.height/2) / svg.height );
     //var px = img.context.getImageData(sx, sy, 1, 1).data;
 
-    var x = centroid[0];
-    var y = centroid[1];
-    var sx = img.canvas.width * (x / renderer.width);
-    var sy = img.canvas.height * (y / renderer.height);
+    // Cache Variables
+    var offsetX = renderer.width * -0.5;
+    var offsetY = renderer.height * 0.5;
+
+    var x = centroid[0] - offsetX;
+    var y = centroid[1] + (offsetY*2);
+    //var sx = img.canvas.width * (x / renderer.width);
+    //var sy = img.canvas.height * (y / renderer.height);
+
+    //console.log('bBox[0]=',bBox[0],'bBox[1]=',bBox[1],'bBox[1]-bBox[0]=',bBox[1]-bBox[0]);
+
+    var sx = Math.floor(img.canvas.width * (x / (bBox[1]-bBox[0])));
+    var sy = Math.floor(img.canvas.height * (y / (bBox[3]-bBox[2])));
+
+    //console.log('sx=',sx,'sy=',sy);
     var px = img.context.getImageData(sx, sy, 1, 1).data;
-    px[0] = 1;
-    px[1] = 0;
-    px[2] = 0;
+
+    //console.log('x=',x);
+    //console.log('y=',y);
+    //console.log('(x / renderer.width)=',(x / (bBox[1]-bBox[0]));
+    //console.log('(y / renderer.height)=',(y / (bBox[3]-bBox[2])));
 
     //console.log('triangle color: ', px);
     // Return rgba
-    return FSS.Vector4.create(px[0], px[1], px[2], 1);
-  } else {
-      console.log('no image loaded');
+
+    //return new FSS.Color(ambient || '#FFFFFF');
+    //return FSS.Vector4.create(px[0], px[1], px[2], 1);
+    //this.rgba
+
+    //console.log('triangle color: ', px);
+
+    /*this.rgba[0] = parseInt(hex.substring(size*0, size*1), 16) / 255;
+    this.rgba[1] = parseInt(hex.substring(size*1, size*2), 16) / 255;
+    this.rgba[2] = parseInt(hex.substring(size*2, size*3), 16) / 255;
+    this.rgba[3] = FSS.Utils.isNumber(opacity) ? opacity : this.rgba[3];*/
+
+    //return FSS.Vector4.create(px[0] / 255, px[1] / 255, px[2] / 255, 1);
+
+    var color = new FSS.Color(rgbToHex(px[0], px[1], px[2]), 1);
+    //console.log('color =',color);
+    return color ;
   }
 
   // Return blank rgba
-  return FSS.Vector4.create(0, 0, 0, 1);
+  var color = new FSS.Color(rgbToHex(0, 0, 0), 1);
+  //console.log('color =',color);
+  return color ;
 }
 
     //fill = "rgb("+px[0]+","+px[1]+","+px[2]+")"
@@ -2413,8 +2491,8 @@ function initGif() {
     slices: 124,
     depth: 0,
     maxdepth: 200,
-    ambient: '#555555',
-    diffuse: '#FFFFFF'
+    ambient: '#000000',
+    diffuse: '#000000'
   };
 
   //------------------------------
@@ -2425,8 +2503,8 @@ function initGif() {
     xPos : 0,
     yPos : 200,
     zOffset: 100,
-    ambient: '#880066',
-    diffuse: '#FF8800',
+    ambient: '#FFFFFF',
+    diffuse: '#FFFFFF',
     pickedup :true,
     proxy : false,
     currIndex : 0,
@@ -2478,7 +2556,7 @@ function initGif() {
   var CANVAS = 'canvas';
   var SVG = 'svg';
   var RENDER = {
-    renderer: WEBGL
+    renderer: CANVAS
   };
 
   //------------------------------

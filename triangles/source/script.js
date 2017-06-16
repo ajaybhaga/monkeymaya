@@ -8,7 +8,7 @@
   var MESH = {
     width: 1.2,
     height: 1.2,
-    slices: 124,
+    slices: 500,
     depth: 0,
     maxdepth: 200,
     ambient: '#000000',

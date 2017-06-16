@@ -758,11 +758,16 @@ FSS.Geometry.prototype = {
   }
 };
 
+// Load gif.js
+var imported = document.createElement('script');
+imported.src = 'js/jsfeat-min.js';
+document.head.appendChild(imported);
+
 /**
  * @class Plane
  * @author Matthew Wagerfield, modified by Maksim Surguy to implement Delaunay triangulation
  */
-FSS.Plane = function(width, height, howmany) {
+FSS.Plane = function(width, height, howmany, img) {
   FSS.Geometry.call(this);
   this.width = width || 100;
   this.height = height || 100;
@@ -777,6 +782,32 @@ FSS.Plane = function(width, height, howmany) {
     y =  offsetY - Math.random()*height;
 
     vertices[i] = [x, y];
+  }
+
+  if (img) {
+    var rescale = 1; // ?
+
+    var threshold = 30;
+    jsfeat.fast_corners.set_threshold(threshold);
+
+    var corners = [];
+    for(var i = 0; i < img.grayscale.cols*img.grayscale.rows; ++i) {
+      corners[i] = new jsfeat.keypoint_t(0,0,0,0);
+    }
+
+    var count = Math.min( 500, jsfeat.fast_corners.detect(img.grayscale, corners, 3) );
+
+    for (var i = 0; i < count; i++) {
+      createPoint( [corners[i].x*rescale, corners[i].y*rescale], i);
+    }
+
+    if (count > 0) {
+      console.log('Feature points added.');
+    }
+    
+  } else {
+    // No image loaded
+    console.log('No image loaded, not adding feature points.');
   }
 
   // Generate additional points on the perimeter so that there are no holes in the pattern
@@ -796,6 +827,8 @@ FSS.Plane = function(width, height, howmany) {
     vertices.push([ offsetX + width, offsetY - Math.random()*height]);
     vertices.push([ offsetX + Math.random()*width, offsetY-height]);
   }
+
+  // Add feature points base on jsfeat grayscale
 
   // Create an array of triangulated coordinates from our vertices
   var triangles = Delaunay.triangulate(vertices);
@@ -1873,6 +1906,11 @@ var playGIF = function(gif, preview) {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height );
   */
     //var image_data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    var image_data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    img.grayscale = new jsfeat.matrix_t(canvas.width, canvas.height, jsfeat.U8_t | jsfeat.C1_t);
+    jsfeat.imgproc.grayscale(image_data.data, canvas.width, canvas.height, img.grayscale);
+
     img.loaded = true;
 
   //  };
@@ -2249,8 +2287,8 @@ function getTriangleColor(centroid, bBox, renderer) {
     var offsetX = renderer.width * -0.5;
     var offsetY = renderer.height * 0.5;
 
-    var x = centroid[0] - offsetX;
-    var y = centroid[1] + (offsetY*2);
+    var x = centroid[0] + (bBox[1]-bBox[0])/2;
+    var y = centroid[1] + (bBox[3]-bBox[2])/2;
     //var sx = img.canvas.width * (x / renderer.width);
     //var sy = img.canvas.height * (y / renderer.height);
 
@@ -2488,7 +2526,7 @@ function initGif() {
   var MESH = {
     width: 1.2,
     height: 1.2,
-    slices: 124,
+    slices: 500,
     depth: 0,
     maxdepth: 200,
     ambient: '#000000',

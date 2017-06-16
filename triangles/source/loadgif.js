@@ -249,6 +249,11 @@ var playGIF = function(gif, preview) {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height );
   */
     //var image_data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    var image_data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    img.grayscale = new jsfeat.matrix_t(canvas.width, canvas.height, jsfeat.U8_t | jsfeat.C1_t);
+    jsfeat.imgproc.grayscale(image_data.data, canvas.width, canvas.height, img.grayscale);
+
     img.loaded = true;
 
   //  };
@@ -625,8 +630,8 @@ function getTriangleColor(centroid, bBox, renderer) {
     var offsetX = renderer.width * -0.5;
     var offsetY = renderer.height * 0.5;
 
-    var x = centroid[0] - offsetX;
-    var y = centroid[1] + (offsetY*2);
+    var x = centroid[0] + (bBox[1]-bBox[0])/2;
+    var y = centroid[1] + (bBox[3]-bBox[2])/2;
     //var sx = img.canvas.width * (x / renderer.width);
     //var sy = img.canvas.height * (y / renderer.height);
 

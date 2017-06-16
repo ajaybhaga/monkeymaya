@@ -178,7 +178,7 @@
     createMesh();
     addLights();
     addEventListeners();
-    addControls();
+    //addControls();
     //LIGHT.randomize();
     resize(container.offsetWidth, container.offsetHeight);
     animate();

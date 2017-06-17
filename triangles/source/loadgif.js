@@ -627,8 +627,8 @@ function getTriangleColor(centroid, bBox, renderer) {
     //var px = img.context.getImageData(sx, sy, 1, 1).data;
 
     // Cache Variables
-    var offsetX = renderer.width * -0.5;
-    var offsetY = renderer.height * 0.5;
+    //var offsetX = renderer.width * -0.5;
+    //var offsetY = renderer.height * 0.5;
 
     var x = centroid[0] + (bBox[1]-bBox[0])/2;
     var y = centroid[1] + (bBox[3]-bBox[2])/2;
@@ -640,8 +640,9 @@ function getTriangleColor(centroid, bBox, renderer) {
     var sx = Math.floor(img.canvas.width * (x / (bBox[1]-bBox[0])));
     var sy = Math.floor(img.canvas.height * (y / (bBox[3]-bBox[2])));
 
+    var iy = img.canvas.height-sy;
     //console.log('sx=',sx,'sy=',sy);
-    var px = img.context.getImageData(sx, sy, 1, 1).data;
+    var px = img.context.getImageData(sx, iy, 1, 1).data;
 
     //console.log('x=',x);
     //console.log('y=',y);

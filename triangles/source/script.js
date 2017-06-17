@@ -8,9 +8,9 @@
   var MESH = {
     width: 1.2,
     height: 1.2,
-    slices: 500,
+    slices: 1200,
     depth: 0,
-    maxdepth: 200,
+    maxdepth: 40,
     ambient: '#000000',
     diffuse: '#000000'
   };
@@ -217,7 +217,7 @@
   function createMesh() {
     scene.remove(mesh);
     renderer.clear();
-    geometry = new FSS.Plane(MESH.width * renderer.width, MESH.height * renderer.height, MESH.slices);
+    geometry = new FSS.Plane(MESH.width * renderer.width, MESH.height * renderer.height, MESH.slices, img);
     material = new FSS.Material(MESH.ambient, MESH.diffuse);
     mesh = new FSS.Mesh(geometry, material);
     scene.add(mesh);
@@ -493,6 +493,7 @@
 
   // Pick up the light when a space is pressed
   Mousetrap.bind('space', function() {
+    createMesh();
 //    LIGHT.pickedup = !LIGHT.pickedup;
     //createMesh();
     impulse += 5.0;

@@ -25,26 +25,28 @@ FSS.Plane = function(width, height, howmany, img) {
   }
 
   if (img) {
-    var rescale = 1; // ?
+    if (img.grayscale) {
+      var rescale = 1; // ?
 
-    var threshold = 30;
-    jsfeat.fast_corners.set_threshold(threshold);
+      var threshold = 30;
+      jsfeat.fast_corners.set_threshold(threshold);
 
-    var corners = [];
-    for(var i = 0; i < img.grayscale.cols*img.grayscale.rows; ++i) {
-      corners[i] = new jsfeat.keypoint_t(0,0,0,0);
+      var corners = [];
+      for(var i = 0; i < img.grayscale.cols*img.grayscale.rows; ++i) {
+        corners[i] = new jsfeat.keypoint_t(0,0,0,0);
+      }
+
+      var count = Math.min( 500, jsfeat.fast_corners.detect(img.grayscale, corners, 3) );
+
+      for (var i = 0; i < count; i++) {
+        vertices.push([corners[i].x*rescale, corners[i].y*rescale]);
+      }
+
+      if (count > 0) {
+        console.log('Feature points added.');
+      }
     }
 
-    var count = Math.min( 500, jsfeat.fast_corners.detect(img.grayscale, corners, 3) );
-
-    for (var i = 0; i < count; i++) {
-      createPoint( [corners[i].x*rescale, corners[i].y*rescale], i);
-    }
-
-    if (count > 0) {
-      console.log('Feature points added.');
-    }
-    
   } else {
     // No image loaded
     console.log('No image loaded, not adding feature points.');

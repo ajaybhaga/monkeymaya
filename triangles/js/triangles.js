@@ -785,26 +785,28 @@ FSS.Plane = function(width, height, howmany, img) {
   }
 
   if (img) {
-    var rescale = 1; // ?
+    if (img.grayscale) {
+      var rescale = 1; // ?
 
-    var threshold = 30;
-    jsfeat.fast_corners.set_threshold(threshold);
+      var threshold = 30;
+      jsfeat.fast_corners.set_threshold(threshold);
 
-    var corners = [];
-    for(var i = 0; i < img.grayscale.cols*img.grayscale.rows; ++i) {
-      corners[i] = new jsfeat.keypoint_t(0,0,0,0);
+      var corners = [];
+      for(var i = 0; i < img.grayscale.cols*img.grayscale.rows; ++i) {
+        corners[i] = new jsfeat.keypoint_t(0,0,0,0);
+      }
+
+      var count = Math.min( 500, jsfeat.fast_corners.detect(img.grayscale, corners, 3) );
+
+      for (var i = 0; i < count; i++) {
+        vertices.push([corners[i].x*rescale, corners[i].y*rescale]);
+      }
+
+      if (count > 0) {
+        console.log('Feature points added.');
+      }
     }
 
-    var count = Math.min( 500, jsfeat.fast_corners.detect(img.grayscale, corners, 3) );
-
-    for (var i = 0; i < count; i++) {
-      createPoint( [corners[i].x*rescale, corners[i].y*rescale], i);
-    }
-
-    if (count > 0) {
-      console.log('Feature points added.');
-    }
-    
   } else {
     // No image loaded
     console.log('No image loaded, not adding feature points.');
@@ -2284,8 +2286,8 @@ function getTriangleColor(centroid, bBox, renderer) {
     //var px = img.context.getImageData(sx, sy, 1, 1).data;
 
     // Cache Variables
-    var offsetX = renderer.width * -0.5;
-    var offsetY = renderer.height * 0.5;
+    //var offsetX = renderer.width * -0.5;
+    //var offsetY = renderer.height * 0.5;
 
     var x = centroid[0] + (bBox[1]-bBox[0])/2;
     var y = centroid[1] + (bBox[3]-bBox[2])/2;
@@ -2297,8 +2299,9 @@ function getTriangleColor(centroid, bBox, renderer) {
     var sx = Math.floor(img.canvas.width * (x / (bBox[1]-bBox[0])));
     var sy = Math.floor(img.canvas.height * (y / (bBox[3]-bBox[2])));
 
+    var iy = img.canvas.height-sy;
     //console.log('sx=',sx,'sy=',sy);
-    var px = img.context.getImageData(sx, sy, 1, 1).data;
+    var px = img.context.getImageData(sx, iy, 1, 1).data;
 
     //console.log('x=',x);
     //console.log('y=',y);
@@ -2526,9 +2529,9 @@ function initGif() {
   var MESH = {
     width: 1.2,
     height: 1.2,
-    slices: 500,
+    slices: 1200,
     depth: 0,
-    maxdepth: 200,
+    maxdepth: 40,
     ambient: '#000000',
     diffuse: '#000000'
   };
@@ -2735,7 +2738,7 @@ function initGif() {
   function createMesh() {
     scene.remove(mesh);
     renderer.clear();
-    geometry = new FSS.Plane(MESH.width * renderer.width, MESH.height * renderer.height, MESH.slices);
+    geometry = new FSS.Plane(MESH.width * renderer.width, MESH.height * renderer.height, MESH.slices, img);
     material = new FSS.Material(MESH.ambient, MESH.diffuse);
     mesh = new FSS.Mesh(geometry, material);
     scene.add(mesh);
@@ -3011,6 +3014,7 @@ function initGif() {
 
   // Pick up the light when a space is pressed
   Mousetrap.bind('space', function() {
+    createMesh();
 //    LIGHT.pickedup = !LIGHT.pickedup;
     //createMesh();
     impulse += 5.0;

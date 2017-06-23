@@ -1,5 +1,5 @@
 /*
-  Monkey Maya Video Processing Engine
+  Monkey Maya Video Processing Engine v0.1
   Author: Ajay Bhaga
 */
 'use strict';
@@ -18,6 +18,39 @@ var pg = require('pg');
 var http = require('http');
 var request = require('request');
 
+// Include the public functions from 'libs.js'
+var libs = require('./libs.js');
+console.log(libs.corelib.supertriangle());
+
+/*
+var delaunay = require('./js/delaunay.js');
+var Core = require('./js/Core.js');
+var Math = require('./js/Math.js');
+var Vector3 = require('./js/Vector3.js');
+var Vector4 = require('./js/Vector4.js');
+var Color = require('./js/Color.js');
+var Object = require('./js/Object.js');
+var Light = require('./js/Light.js');
+var Vertex = require('./js/Vertex.js');
+var Triangle = require('./js/Triangle.js');
+var Geometry = require('./js/Geometry.js');
+var Plane = require('./js/Plane.js');
+var Material = require('./js/Material.js');
+var Mesh = require('./js/Mesh.js');
+var Scene = require('./js/Scene.js');
+var loadgif = require('./js/loadgif.js');
+*/
+var vertex = new libs.FSS.Vertex(0, 0, 0);
+/*
+function testLoad() {
+  //libs.serverMethod1();
+  // Call lib method
+  var a = new libs.FSS.Color();
+}
+
+testLoad();
+*/
+
 function fetchGifURL(keyword) {
   console.log('Fetching gif url for keyword: ', keyword);
 
@@ -34,9 +67,7 @@ function fetchGifURL(keyword) {
           storeURL(keyword, urlData);
           //console.log('data = ', data);
         }
-
   });
-
 }
 
 var loadKeywords = function(req, res) {

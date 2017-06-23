@@ -257,6 +257,11 @@ SOFTWARE.
     exports.Delaunay = Delaunay;
 })();
 
+//
+
+var Canvas = require('canvas');
+Image = Canvas.Image;
+
 /**
  * Defines the Flat Surface Shader namespace for all the awesomeness to exist upon.
  * @author Matthew Wagerfield
@@ -1534,20 +1539,7 @@ var dx = a[0] - b[0],
 return dx * dx + dy * dy;
 };
 
-var img = {
-  preview: document.querySelector("#preview"),
-  canvas: document.createElement("canvas"),
-  context: null,
-  grayscale: null,
-  loaded: false
-}
-
-document.querySelector("#gifcanvas").appendChild( img.canvas );
-img.context = img.canvas.getContext("2d");
-
 var playGIF = function(gif, preview) {
-
-  console.log('Playing gif: ', gif.getAttribute("src"));
 
   var stream;
   var hdr;
@@ -2067,6 +2059,17 @@ var playGIF = function(gif, preview) {
 
   var parent = gif.parentNode;
 
+  //
+  canvas = new Canvas(canvas.width, canvas.height);
+  ctx = canvas.getContext('2d');
+
+/*  fs.readFile(__dirname + '/images/squid.png', function(err, squid){
+    if (err) throw err;
+    img = new Image;
+    img.src = squid;
+    ctx.drawImage(img, 0, 0, img.width / 4, img.height / 4);
+  });
+*/
   var div = document.createElement('div');
   div.setAttribute("id", "tmp");
   var canvas = img.canvas;
@@ -2292,77 +2295,9 @@ function readImage() {
 }
 
 function initGif() {
-
-  // Load image frame
-  //img.preview.src = "images/mao.jpg";
-  var _img = document.createElement('img');
-  //      document.getElementById('download').appendChild(_img);
-  _img.style.visibility = 'hidden';
-
-  var files = [];
-
-  files.push('dancingmonkey.gif');
-  files.push('dancingmonkey2.gif');
-  files.push('patterns.gif');
-  files.push('cheetah.gif');
-
-  var wordList = [];
-  wordList.push('fun');
-  wordList.push('happy');
-  wordList.push('dark');
-  wordList.push('unhappy');
-  wordList.push('sad');
-  wordList.push('angry');
-  wordList.push('worried');
-  wordList.push('paranoid');
-  wordList.push('compassion');
-  wordList.push('excited');
-  wordList.push('elated');
-  wordList.push('crazy');
-  wordList.push('love');
-  wordList.push('hate');
-
-  var r = Math.floor(Math.random() * wordList.length);
-  mood = wordList[r]; // search query
-
-  console.log('mood: ', mood);
-
-  var q = mood; // search query
-  var request = new XMLHttpRequest;
-  request.open('GET', 'http://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag='+q, true);
-
-  request.onload = function() {
-
-    console.log('Retrieving gif from giphy.');
-    if (request.status >= 200 && request.status < 400) {
-        data = JSON.parse(request.responseText).data.image_url;
-        //console.log(data);
-        //console.log(JSON.parse(request.responseText).data);
-        //document.getElementById("giphyme").innerHTML = '<center><img src = "'+data+'"  title="GIF via Giphy"></center>';
-
-        if (_img != null) {
-          _img.src = data;
-          playGIF(_img, img.preview);
-        }
-
-    } else {
-      console.log('reached giphy, but API returned an error');
-    }
-
+    playGIF(_img, img.preview);
   };
 
-  request.onerror = function() {
-    console.log('connection error');
-  };
-
-  request.send();
-
-  var r = Math.floor(Math.random() * files.length);
-  console.log(r);
-
-  //_img.src = 'images/' + files[r];
-  //setTimeout(function() { playGIF(_img); }, 0);
-  //playGIF.doPlay();
 }
 
 (function(){
@@ -2437,144 +2372,21 @@ function initGif() {
   };
 
   //------------------------------
-  // Render Properties
-  //------------------------------
-  var WEBGL = 'webgl';
-  var CANVAS = 'canvas';
-  var SVG = 'svg';
-  var RENDER = {
-    renderer: CANVAS
-  };
-
-  //------------------------------
-  // Export Properties
-  //------------------------------
-  var EXPORT = {
-    width: 2000,
-    height: 1000,
-
-    exportCurrent: function(){
-      switch(RENDER.renderer) {
-        case WEBGL:
-          window.open(webglRenderer.element.toDataURL(), '_blank');
-          break;
-        case CANVAS:
-          window.open(canvasRenderer.element.toDataURL(), '_blank');
-          break;
-        case SVG:
-          var data = encodeURIComponent(output.innerHTML);
-          var url = "data:image/svg+xml," + data;
-          window.open(url, '_blank');
-          break;
-      }
-    },
-    export: function() {
-      var l, x, y, light,
-        scalarX = this.width / renderer.width,
-        scalarY = this.height / renderer.height;
-
-      // store a temp value of the slices
-      var slices = MESH.slices;
-      // Increase or decrease number of slices depending on the size of the canvas
-      MESH.slices = Math.ceil(slices*scalarX*1.4);
-
-      // Regenerate the whole canvas
-      resize(this.width, this.height);
-
-      // restore the number of slices
-      MESH.slices = slices;
-
-      // Move the lights on the plane to accomodate the size of the canvas
-      for (l = scene.lights.length - 1; l >= 0; l--) {
-        light = scene.lights[l];
-        x = light.position[0];
-        y = light.position[1];
-        z = light.position[2];
-        FSS.Vector3.set(light.position, x*scalarX, y*scalarY, z*scalarX);
-      }
-
-      // Update depth of the triangles
-      update(0);
-      // Render the canvas
-      render();
-
-      switch(RENDER.renderer) {
-        case WEBGL:
-          window.open(webglRenderer.element.toDataURL(), '_blank');
-          break;
-        case CANVAS:
-          window.open(canvasRenderer.element.toDataURL(), '_blank');
-          break;
-        case SVG:
-          var data = encodeURIComponent(output.innerHTML);
-          var url = "data:image/svg+xml," + data;
-          window.open(url, '_blank');
-          break;
-      }
-
-      resize(container.offsetWidth, container.offsetHeight);
-
-      for (l = scene.lights.length - 1; l >= 0; l--) {
-        light = scene.lights[l];
-        x = light.position[0];
-        y = light.position[1];
-        z = light.position[2];
-        FSS.Vector3.set(light.position, x/scalarX, y/scalarY, z/scalarX);
-      }
-    }
-  };
-
-
-  //------------------------------
   // Global Properties
   //------------------------------
   var center = FSS.Vector3.create();
-  var container = document.getElementById('container');
-  var controls = document.getElementById('controls');
-  var output = document.getElementById('output');
   var renderer, scene, mesh, geometry, material;
-  var webglRenderer, canvasRenderer, svgRenderer;
-  var gui;
 
   //------------------------------
   // Methods
   //------------------------------
   function initialise() {
-    createRenderer();
     createScene();
     createMesh();
     addLights();
-    addEventListeners();
     //addControls();
     //LIGHT.randomize();
-    resize(container.offsetWidth, container.offsetHeight);
     animate();
-  }
-
-  function createRenderer() {
-    webglRenderer = new FSS.WebGLRenderer();
-    canvasRenderer = new FSS.CanvasRenderer();
-    svgRenderer = new FSS.SVGRenderer();
-    setRenderer(RENDER.renderer);
-  }
-
-  function setRenderer(index) {
-    if (renderer) {
-      output.removeChild(renderer.element);
-    }
-    switch(index) {
-      case WEBGL:
-        renderer = webglRenderer;
-        break;
-      case CANVAS:
-        renderer = canvasRenderer;
-        break;
-      case SVG:
-        renderer = svgRenderer;
-        break;
-    }
-    renderer.setSize(container.offsetWidth, container.offsetHeight);
-    output.appendChild(renderer.element);
   }
 
   function createScene() {
@@ -2583,8 +2395,9 @@ function initGif() {
 
   function createMesh() {
     scene.remove(mesh);
-    renderer.clear();
-    geometry = new FSS.Plane(MESH.width * renderer.width, MESH.height * renderer.height, MESH.slices, img);
+//    geometry = new FSS.Plane(MESH.width * canvas.width, MESH.height * canvas.height, MESH.slices, img);
+    geometry = new FSS.Plane(MESH.width, MESH.height, MESH.slices, img);
+
     material = new FSS.Material(MESH.ambient, MESH.diffuse);
     mesh = new FSS.Mesh(geometry, material);
     scene.add(mesh);
@@ -2606,7 +2419,6 @@ function initGif() {
     y = typeof y !== 'undefined' ? y : LIGHT.yPos;
     z = typeof z !== 'undefined' ? z : LIGHT.zOffset;
 
-    renderer.clear();
     light = new FSS.Light(ambient, diffuse);
     light.ambientHex = light.ambient.format();
     light.diffuseHex = light.diffuse.format();
@@ -2638,14 +2450,6 @@ function initGif() {
     LIGHT.proxy = scene.lights[LIGHT.currIndex-1];
     LIGHT.pickedup = false;
 
-    renderer.clear();
-  }
-
-  // Resize canvas
-  function resize(width, height) {
-    renderer.setSize(width, height);
-    FSS.Vector3.set(center, renderer.halfWidth, renderer.halfHeight);
-    createMesh();
   }
 
   function animate() {
@@ -2682,148 +2486,6 @@ function initGif() {
     geometry.dirty = true;
   }
 
-  function render() {
-    renderer.render(scene);
-  }
-
-  function addEventListeners() {
-    window.addEventListener('resize', onWindowResize);
-    container.addEventListener('mousemove', onMouseMove);
-  }
-
-  function addControls() {
-    var i, l, light, folder, controller;
-
-    // Create GUI
-    gui = new dat.GUI({autoPlace:false});
-
-    controls.appendChild(gui.domElement);
-
-    // Create folders
-    renderFolder = gui.addFolder('Render');
-    meshFolder = gui.addFolder('Mesh');
-    lightFolder = gui.addFolder('Light');
-    exportFolder = gui.addFolder('Export');
-
-    // Open folders
-    lightFolder.open();
-
-    // Add Render Controls
-    controller = renderFolder.add(RENDER, 'renderer', {webgl:WEBGL, canvas:CANVAS, svg:SVG});
-    controller.onChange(function(value) {
-      setRenderer(value);
-    });
-
-    // Add Mesh Controls
-    controller = meshFolder.addColor(MESH, 'ambient');
-    controller.onChange(function(value) {
-      for (i = 0, l = scene.meshes.length; i < l; i++) {
-        scene.meshes[i].material.ambient.set(value);
-      }
-    });
-    controller = meshFolder.addColor(MESH, 'diffuse');
-    controller.onChange(function(value) {
-      for (i = 0, l = scene.meshes.length; i < l; i++) {
-        scene.meshes[i].material.diffuse.set(value);
-      }
-    });
-    controller = meshFolder.add(MESH, 'width', 0.05, 2);
-    controller.onChange(function(value) {
-      if (geometry.width !== value * renderer.width) { createMesh(); }
-    });
-    controller = meshFolder.add(MESH, 'height', 0.05, 2);
-    controller.onChange(function(value) {
-      if (geometry.height !== value * renderer.height) { createMesh(); }
-    });
-
-    controller = meshFolder.add(MESH, 'depth', 0, MESH.maxdepth).listen();
-
-    controller = meshFolder.add(MESH, 'slices', 1, 800);
-    controller.step(1);
-    controller.onChange(function(value) {
-      if (geometry.slices !== value) { createMesh(); }
-    });
-
-    // Add Light Controls
-    // TODO: add the number of lights dynamically
-    controller = lightFolder.add(LIGHT, 'currIndex', {1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7}).name('Current light').listen();
-    controller.onChange(function(value) {
-      LIGHT.proxy = scene.lights[value-1];
-
-      LIGHT.ambient = LIGHT.proxy.ambient.hex;
-      LIGHT.diffuse = LIGHT.proxy.diffuse.hex;
-      LIGHT.xPos    = LIGHT.proxy.position[0];
-      LIGHT.yPos    = LIGHT.proxy.position[1];
-      LIGHT.zOffset = LIGHT.proxy.position[2];
-
-      // Hacky way to allow manual update of the HEX colors for light's ambient and diffuse
-      gui.__folders.Light.__controllers[1].updateDisplay();
-      gui.__folders.Light.__controllers[2].updateDisplay();
-    });
-
-    controller = lightFolder.addColor(LIGHT, 'ambient');
-    controller.onChange(function(value) {
-      LIGHT.proxy.ambient.set(value);
-      LIGHT.proxy.ambientHex =  LIGHT.proxy.ambient.format();
-    });
-
-    controller = lightFolder.addColor(LIGHT, 'diffuse');
-    controller.onChange(function(value) {
-      LIGHT.proxy.diffuse.set(value);
-      LIGHT.proxy.diffuseHex = LIGHT.proxy.diffuse.format();
-    });
-
-    controller = lightFolder.add(LIGHT, 'count', 1, 7).listen();
-    controller.step(1);
-    controller.onChange(function(value) {
-      if (scene.lights.length !== value) {
-        // If the value is more then the number of lights, add lights, otherwise delete lights from the scene
-        if (value > scene.lights.length) {
-          addLight();
-        } else {
-          trimLights(value);
-        }
-      }
-    });
-
-    controller = lightFolder.add(LIGHT, 'xPos', -mesh.geometry.width/2, mesh.geometry.width/2).listen();
-    controller.step(1);
-    controller.onChange(function(value) {
-      LIGHT.proxy.setPosition(value, LIGHT.proxy.position[1], LIGHT.proxy.position[2]);
-    });
-
-    controller = lightFolder.add(LIGHT, 'yPos', -mesh.geometry.height/2, mesh.geometry.height/2).listen();
-    controller.step(1);
-    controller.onChange(function(value) {
-      LIGHT.proxy.setPosition(LIGHT.proxy.position[0], value, LIGHT.proxy.position[2]);
-    });
-
-    controller = lightFolder.add(LIGHT, 'zOffset', 0, 1000).name('Distance').listen();
-    controller.step(1);
-    controller.onChange(function(value) {
-      LIGHT.proxy.setPosition(LIGHT.proxy.position[0], LIGHT.proxy.position[1], value);
-    });
-
-    controller = lightFolder.add(LIGHT, 'randomize');
-
-    // Add Export Controls
-    controller = exportFolder.add(EXPORT, 'width', 100, 3000);
-    controller.step(100);
-    controller = exportFolder.add(EXPORT, 'height', 100, 3000);
-    controller.step(100);
-    controller = exportFolder.add(EXPORT, 'export').name('export big');
-    controller = exportFolder.add(EXPORT, 'exportCurrent').name('export this');
-
-  }
-
-  function toggleEl(id) {
-    var e = document.getElementById(id);
-    if(e.style.display == 'block')
-       e.style.display = 'none';
-    else
-       e.style.display = 'block';
-  }
-
   function getRandomColor(){
     return '#'+(Math.random().toString(16) + '000000').slice(2, 8);
   }
@@ -2832,63 +2494,10 @@ function initGif() {
   // Callbacks
   //------------------------------
 
-  function onWindowResize(event) {
-    resize(container.offsetWidth, container.offsetHeight);
-    render();
-  }
-
-  function onMouseMove(event) {
-    if(LIGHT.pickedup){
-      LIGHT.xPos = event.x - renderer.width/2;
-      LIGHT.yPos = renderer.height/2 -event.y;
-      LIGHT.proxy.setPosition(LIGHT.xPos, LIGHT.yPos, LIGHT.proxy.position[2]);
-    }
-  }
-
-  // Hide the controls completely on pressing H
-  Mousetrap.bind('H', function() {
-    toggleEl('controls');
-    toggleEl('links');
-
-  });
-
-  // Add a light on ENTER key
-  Mousetrap.bind('enter', function() {
-    LIGHT.count++;
-    addLight();
-  });
-
-  // Pick up the light when a space is pressed
-  Mousetrap.bind('space', function() {
-    createMesh();
-//    LIGHT.pickedup = !LIGHT.pickedup;
-    //createMesh();
-    impulse += 5.0;
-    //requestAnimationFrame(animate);
-    mesh.update(renderer, scene.lights, true);
-
-  });
-
-
-
   // Let there be light!
   initialise();
 
   // Load gif
   initGif();
 
-  window.updateRenderer = function() {
-    mesh.update(renderer, scene.lights, true);
-  };
-
-  console.log('window.updateRenderer=',window.updateRenderer);
-
-
-/*  while (1>0) {
-    requestAnimationFrame(animate);
-  }*/
-
-
-
-  //var window.updateRenderer = mesh.update(scene.lights, true);
 })();

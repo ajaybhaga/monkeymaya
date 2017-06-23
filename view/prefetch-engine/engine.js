@@ -1,9 +1,12 @@
+/*
+  Monkey Maya Video Processing Engine
+  Author: Ajay Bhaga
+*/
 'use strict';
 
 const port = 3000;
 var conString = "postgresql://monkey:@pple123@localhost/monkeymaya";
 
-//const cache = require('./cache.js')
 var keywords = [];
 var cache = require('js-cache');
 var gifCache = new cache();
@@ -13,14 +16,13 @@ const express = require('express');
 const app = express();
 var pg = require('pg');
 var http = require('http');
-
+var request = require('request');
 
 function fetchGifURL(keyword) {
   console.log('Fetching gif url for keyword: ', keyword);
 
   var q = keyword; // search query
 
-  var request = require('request');
   request('http://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag='+q, function (error, response, body) {
     console.log('error:', error); // Print the error if one occurred
     console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
@@ -28,11 +30,8 @@ function fetchGifURL(keyword) {
     console.log('Retrieving gif from giphy.');
         if (response.statusCode >= 200 && response.statusCode < 400) {
           var urlData = JSON.parse(body).data.image_url;
-
           console.log(keyword + ', URL = ' + urlData);
           storeURL(keyword, urlData);
-
-          //return data;
           //console.log('data = ', data);
         }
 
@@ -70,7 +69,7 @@ var loadKeywords = function(req, res) {
         		res.send('[Monkey Maya Service] keywords received ' + keywords.length);
 
             for (var i = 0; i < keywords.length; i++) {
-              var url = fetchGifURL(keywords[i]);
+              fetchGifURL(keywords[i]);
             }
         	});
         }
@@ -79,15 +78,16 @@ var loadKeywords = function(req, res) {
 
 var loadNextSet = function() {
   for (var i = 0; i < keywords.length; i++) {
-    var url = fetchGifURL(keywords[i]);
+    fetchGifURL(keywords[i]);
   }
-
 }
 
 var storeURL = function(keyword, url) {
     var count = 1;
 
-    var urlList = gifCache.get(keyword);
+    var key = keyword + count;
+    var urlList = gifCache.get(key);
+    console.log('urlList = ', urlList);
     if (typeof urlList == 'undefined') {
         urlList = [];
         console.log('Creating new url list.');
@@ -103,15 +103,8 @@ var storeURL = function(keyword, url) {
 
     urlList = gifCache.get(key);
     console.log(keyword + ' has ' + urlList.length + ' url(s) stored.');
-}
 
-var fetchGifs = function() {
-  for (var i = 0; i < keywords.length; i++) {
-    console.log('Fetching gifs.');
-    var videoKey = keywords[i] + ''
-    videoCache.set(videoKey, 'ipsum', 60000);
-    console.log(cache.get('lorem'));
-  }
+    //console.log(gifCache);
 }
 
 app.get('/', function (req, res) {

@@ -1,3 +1,17 @@
-CREATE TABLE MM_CONTROL (
-    keyword varchar(300) NOT NULL
-);
+CREATE TABLE MM_CONTROL (keyword varchar(300) NOT NULL);
+INSERT INTO MM_CONTROL(keyword) VALUES ('happy');
+INSERT INTO MM_CONTROL(keyword) VALUES ('fun');
+INSERT INTO MM_CONTROL(keyword) VALUES ('dark');
+INSERT INTO MM_CONTROL(keyword) VALUES ('light');
+INSERT INTO MM_CONTROL(keyword) VALUES ('unhappy');
+INSERT INTO MM_CONTROL(keyword) VALUES ('sad');
+INSERT INTO MM_CONTROL(keyword) VALUES ('angry');
+INSERT INTO MM_CONTROL(keyword) VALUES ('worried');
+INSERT INTO MM_CONTROL(keyword) VALUES ('paranoid');
+INSERT INTO MM_CONTROL(keyword) VALUES ('anxious');
+INSERT INTO MM_CONTROL(keyword) VALUES ('elated');
+INSERT INTO MM_CONTROL(keyword) VALUES ('crazy');
+INSERT INTO MM_CONTROL(keyword) VALUES ('hate');
+INSERT INTO MM_CONTROL(keyword) VALUES ('magical');
+INSERT INTO MM_CONTROL(keyword) VALUES ('color');
+COMMIT;

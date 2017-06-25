@@ -20,7 +20,6 @@ var request = require('request');
 
 // Include the public functions from 'libs.js'
 var libs = require('./libs.js');
-console.log(libs.corelib.supertriangle());
 
 /*
 var delaunay = require('./js/delaunay.js');
@@ -40,7 +39,11 @@ var Mesh = require('./js/Mesh.js');
 var Scene = require('./js/Scene.js');
 var loadgif = require('./js/loadgif.js');
 */
-var vertex = new libs.FSS.Vertex(0, 0, 0);
+
+var corelib = libs.corelib;
+console.log('Available export methods: ', corelib);
+
+//var vertex = new libs.FSS.Vertex(0, 0, 0);
 /*
 function testLoad() {
   //libs.serverMethod1();

@@ -35,9 +35,11 @@ Thanks to Maksim Surguy for portions of base code.
   var Logger = require('js-logger');
   var request = require('request');
   var Canvas = require('canvas');
-  var GIF = require('gl-gif');
+  var GIFEncoder = require('gifencoder');
+  var fs = require('fs');
+
   var Image = Canvas.Image;
-  var gif = null;
+  var canvas = new Canvas(bufferWidth, bufferHeight);
 
   var version = 0.1;
   Logger.useDefaults();
@@ -1721,8 +1723,6 @@ var bufferHeight = 1024;
 var webglRenderer;
 var gui;
 
-var canvas = new Canvas(bufferWidth, bufferHeight);
-
 //------------------------------
 // Methods
 //------------------------------
@@ -1870,8 +1870,9 @@ function processFrame() {
   var currentTime = new Date().getTime();
   Logger.debug('Submitted next frame', frameCount, 'for rendering @', getDateTime());
 
-  if (frameCount > 30) {
-    //finishExportGif();
+  if (frameCount > 3) {
+    Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
+    finishExportGif();
     return;
   }
 
@@ -1909,37 +1910,19 @@ function finishExportGif() {
   Logger.debug('Rendered gif =', JSON.stringify(dataURI));
 }
 
-function createContext(canvas, opts, render) {
-  if (typeof opts === 'function') {
-    render = opts
-    opts = {}
-  } else {
-    opts = opts || {}
-  }
-
-Logger.debug('canvas.getContext = ' + canvas);
-  var gl = (
-    canvas.getContext('webgl', opts) ||
-    canvas.getContext('webgl-experimental', opts) ||
-    canvas.getContext('experimental-webgl', opts)
-  )
-
-  if (!gl) {
-    throw new Error('Unable to initialize WebGL')
-  }
-
-  render(gl);
-  return gl;
-
-  function tick() {
-    render(gl);
-    //raf(tick)
-  }
-}
-module.exports = createContext;
+var encoder = null;
 
 function initExportGif() {
   var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
+
+  var encoder = new GIFEncoder(gl.drawingBufferWidth, gl.drawingBufferHeight);
+  // stream the results as they are available into myanimated.gif
+  encoder.createReadStream().pipe(fs.createWriteStream('myanimated.gif'));
+
+  encoder.start();
+  encoder.setRepeat(0);   // 0 for repeat, -1 for no-repeat
+  encoder.setDelay(500);  // frame delay in ms
+  encoder.setQuality(10); // image quality. 10 is default.
 
   //Clear screen to white
   gl.clearColor(1, 1, 1, 1);
@@ -1955,14 +1938,40 @@ function initExportGif() {
     }
   }
 
+  // use node-canvas
+  var canvas = new Canvas(gl.drawingBufferWidth, gl.drawingBufferHeight);
+  var ctx = canvas.getContext('2d');
+
+  // red rectangle
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(0, 0, 320, 240);
+  encoder.addFrame(ctx);
+
+  // green rectangle
+  ctx.fillStyle = '#00ff00';
+  ctx.fillRect(0, 0, 320, 240);
+  encoder.addFrame(ctx);
+
+  // blue rectangle
+  ctx.fillStyle = '#0000ff';
+  ctx.fillRect(0, 0, 320, 240);
+  encoder.addFrame(ctx);
+
+  encoder.finish();
+  Logger.debug('Encoding completed.');
+
   exports.gl = gl;
-  gl.canvas = canvas;
+  //gl.canvas = canvas;
 
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
   Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
-  Logger.debug('GL canvas = ' + gl.canvas);
+  //Logger.debug('GL canvas = ' + gl.canvas);
   //Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
 
+
+
+
+/*
   //Logger.debug(exports.gl);
 
   gif = GIF(exports.gl, {
@@ -1971,7 +1980,7 @@ function initExportGif() {
     , height: bufferHeight
     , quality: 20
     , dither: true
-  });
+  });*/
 }
 
 

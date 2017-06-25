@@ -1,0 +1,93 @@
+{
+  "_args": [
+    [
+      "gl-gif",
+      "/home/bhagabot/dev/git/monkeymaya/view/prefetch-engine"
+    ]
+  ],
+  "_from": "gl-gif@latest",
+  "_id": "gl-gif@3.1.0",
+  "_inCache": true,
+  "_installable": true,
+  "_location": "/gl-gif",
+  "_nodeVersion": "0.10.28",
+  "_npmUser": {
+    "email": "hughskennedy@gmail.com",
+    "name": "hughsk"
+  },
+  "_npmVersion": "2.0.2",
+  "_phantomChildren": {},
+  "_requested": {
+    "name": "gl-gif",
+    "raw": "gl-gif",
+    "rawSpec": "",
+    "scope": null,
+    "spec": "latest",
+    "type": "tag"
+  },
+  "_requiredBy": [
+    "#USER"
+  ],
+  "_resolved": "https://registry.npmjs.org/gl-gif/-/gl-gif-3.1.0.tgz",
+  "_shasum": "13be94a0cc6845a703336975fe5a71890c983ed5",
+  "_shrinkwrap": null,
+  "_spec": "gl-gif",
+  "_where": "/home/bhagabot/dev/git/monkeymaya/view/prefetch-engine",
+  "author": {
+    "email": "hughskennedy@gmail.com",
+    "name": "Hugh Kennedy",
+    "url": "http://hughsk.io/"
+  },
+  "bugs": {
+    "url": "https://github.com/hughsk/gl-gif/issues"
+  },
+  "dependencies": {
+    "canvas-pixels": "0.0.0",
+    "tab64": "0.0.1"
+  },
+  "description": "Quickly and easily generate looping GIFs using WebGL",
+  "devDependencies": {
+    "a-big-triangle": "^1.0.0",
+    "beefy": "^2.1.1",
+    "browserify": "^5.12.1",
+    "gl-context": "^0.1.1",
+    "glslify": "^1.6.0"
+  },
+  "directories": {},
+  "dist": {
+    "shasum": "13be94a0cc6845a703336975fe5a71890c983ed5",
+    "tarball": "https://registry.npmjs.org/gl-gif/-/gl-gif-3.1.0.tgz"
+  },
+  "gitHead": "225f80b24dd5cbdedbd358b40e5b55b5a115a540",
+  "homepage": "https://github.com/hughsk/gl-gif",
+  "keywords": [
+    "cats",
+    "gif",
+    "gl",
+    "gratuitous",
+    "loop",
+    "meme",
+    "stackgl",
+    "webgl"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "maintainers": [
+    {
+      "name": "hughsk",
+      "email": "hughskennedy@gmail.com"
+    }
+  ],
+  "name": "gl-gif",
+  "optionalDependencies": {},
+  "readme": "ERROR: No README data found!",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/hughsk/gl-gif.git"
+  },
+  "scripts": {
+    "prepublish": "browserify example.js -o bundle.js -t glslify",
+    "start": "beefy example.js:bundle.js --open -- -t glslify"
+  },
+  "version": "3.1.0"
+}

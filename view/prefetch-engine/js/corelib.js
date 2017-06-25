@@ -33,6 +33,11 @@ Thanks to Maksim Surguy for portions of base code.
 
   // Log messages will be written to the window's console.
   var Logger = require('js-logger');
+  var request = require('request');
+  var Canvas = require('canvas');
+  var GIF = require('gl-gif');
+  var Image = Canvas.Image;
+  var gif = null;
 
   var version = 0.1;
   Logger.useDefaults();
@@ -714,7 +719,7 @@ FSS.Geometry = function() {
 FSS.Geometry.prototype = {
   update: function() {
     if (this.dirty) {
-      //console.log('Recalculating triangle centroids and normals.');
+      //Logger.debug('Recalculating triangle centroids and normals.');
       var t,triangle;
       for (t = this.triangles.length - 1; t >= 0; t--) {
         triangle = this.triangles[t];
@@ -767,13 +772,13 @@ FSS.Plane = function(width, height, howmany, img) {
       }
 
       if (count > 0) {
-        console.log('Feature points added.');
+        Logger.debug('Feature points added.');
       }
     }
 
   } else {
     // No image loaded
-    console.log('No image loaded, not adding feature points.');
+    Logger.debug('No image loaded, not adding feature points.');
   }
 
   // Generate additional points on the perimeter so that there are no holes in the pattern
@@ -849,7 +854,7 @@ FSS.Mesh.prototype.update = function(renderer, lights, calculate) {
   // Calculate the triangle colors
   if (calculate) {
 
-    //console.log('bBox=',this.getBBox());
+    //Logger.debug('bBox=',this.getBBox());
 
     // Iterate through Triangles
     for (t = this.geometry.triangles.length - 1; t >= 0; t--) {
@@ -1011,9 +1016,6 @@ FSS.WebGLRenderer = function() {
 
   // Create and configure the gl context
   //this.gl = this.getContext(this.element, parameters);
-  var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
-
-  this.gl = gl;
 
   // Set the internal support flag
   this.unsupported = !this.gl;
@@ -1073,7 +1075,7 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
   // Clear context
   this.clear();
 
-  console.log('GL render @ ', getDateTime());
+  Logger.debug('GL render @ ', getDateTime());
 
   // Build the shader program
   if (this.lights !== lights) {
@@ -1399,10 +1401,6 @@ FSS.WebGLRenderer.FS = function(lights) {
   return shader;
 };
 
-var request = require('request');
-var Canvas = require('canvas');
-var Image = Canvas.Image;
-
 var frames = [];
 var transparency = null;
 var delay = null;
@@ -1430,31 +1428,22 @@ return dx * dx + dy * dy;
 };
 
 function fetchGifURL(keyword) {
-  console.log('Fetching gif url for keyword: ', keyword);
+  Logger.debug('Fetching gif url for keyword: ', keyword);
 
   var q = keyword; // search query
 
   request('http://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag='+q, function (error, response, body) {
-    console.log('error:', error); // Print the error if one occurred
-    console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
-    //console.log('body:', body); // Print the HTML for the Google homepage.
-    console.log('Retrieving gif from giphy.');
+    Logger.debug('error:', error); // Print the error if one occurred
+    Logger.debug('statusCode:', response && response.statusCode); // Print the response status code if a response was received
+    //Logger.debug('body:', body); // Print the HTML for the Google homepage.
+    Logger.debug('Retrieving gif from giphy.');
         if (response.statusCode >= 200 && response.statusCode < 400) {
           var urlData = JSON.parse(body).data.image_url;
-          console.log(keyword + ', URL = ' + urlData);
+          Logger.debug(keyword + ', URL = ' + urlData);
           storeURL(keyword, urlData);
-          //console.log('data = ', data);
+          //Logger.debug('data = ', data);
         }
   });
-}
-
-function generateCanvas() {
-  // TODO: Fix hard coded dimensions
-  img.canvas = new Canvas(200, 200);
-  img.context = img.canvas.getContext('2d');
-  img.canvas.width = 200;
-  img.canvas.height = 200;
-  var tmpCanvas = new Canvas(img.canvas.width, img.canvas.height);
 }
 
 function generateGrayscale() {
@@ -1492,28 +1481,28 @@ function getTriangleColor(centroid, bBox, renderer) {
     //var sx = img.canvas.width * (x / renderer.width);
     //var sy = img.canvas.height * (y / renderer.height);
 
-    //console.log('bBox[0]=',bBox[0],'bBox[1]=',bBox[1],'bBox[1]-bBox[0]=',bBox[1]-bBox[0]);
+    //Logger.debug('bBox[0]=',bBox[0],'bBox[1]=',bBox[1],'bBox[1]-bBox[0]=',bBox[1]-bBox[0]);
 
     var sx = Math.floor(img.canvas.width * (x / (bBox[1]-bBox[0])));
     var sy = Math.floor(img.canvas.height * (y / (bBox[3]-bBox[2])));
 
     var iy = img.canvas.height-sy;
-    //console.log('sx=',sx,'sy=',sy);
+    //Logger.debug('sx=',sx,'sy=',sy);
     var px = img.context.getImageData(sx, iy, 1, 1).data;
 
-    //console.log('x=',x);
-    //console.log('y=',y);
-    //console.log('(x / renderer.width)=',(x / (bBox[1]-bBox[0]));
-    //console.log('(y / renderer.height)=',(y / (bBox[3]-bBox[2])));
+    //Logger.debug('x=',x);
+    //Logger.debug('y=',y);
+    //Logger.debug('(x / renderer.width)=',(x / (bBox[1]-bBox[0]));
+    //Logger.debug('(y / renderer.height)=',(y / (bBox[3]-bBox[2])));
 
-    //console.log('triangle color: ', px);
+    //Logger.debug('triangle color: ', px);
     // Return rgba
 
     //return new FSS.Color(ambient || '#FFFFFF');
     //return FSS.Vector4.create(px[0], px[1], px[2], 1);
     //this.rgba
 
-    //console.log('triangle color: ', px);
+    //Logger.debug('triangle color: ', px);
 
     /*this.rgba[0] = parseInt(hex.substring(size*0, size*1), 16) / 255;
     this.rgba[1] = parseInt(hex.substring(size*1, size*2), 16) / 255;
@@ -1523,13 +1512,13 @@ function getTriangleColor(centroid, bBox, renderer) {
     //return FSS.Vector4.create(px[0] / 255, px[1] / 255, px[2] / 255, 1);
 
     var color = new FSS.Color(rgbToHex(px[0], px[1], px[2]), 1);
-    //console.log('color =',color);
+    //Logger.debug('color =',color);
     return color ;
   }
 
   // Return blank rgba
   var color = new FSS.Color(rgbToHex(0, 0, 0), 1);
-  //console.log('color =',color);
+  //Logger.debug('color =',color);
   return color ;
 }
 
@@ -1612,8 +1601,8 @@ function onMove(target) {
 function bestCandidateSampler(width, height, numCandidates, numSamplesMax) {
 
   return function() {
-    //console.log('numSamples: ', numSamples);
-    //console.log('numSamplesMax: ', numSamplesMax);
+    //Logger.debug('numSamples: ', numSamples);
+    //Logger.debug('numSamplesMax: ', numSamplesMax);
     if (++numSamples > numSamplesMax) { return; }
     var bestCandidate, bestDistance = 0;
     for (var i = 0; i < numCandidates; ++i) {
@@ -1626,7 +1615,7 @@ function bestCandidateSampler(width, height, numCandidates, numSamplesMax) {
       }
     }
     quadtree.add(bestCandidate);
-    //console.log('bestCandidate: ', bestCandidate);
+    //Logger.debug('bestCandidate: ', bestCandidate);
     return bestCandidate;
   };
 
@@ -1732,6 +1721,8 @@ var bufferHeight = 1024;
 var webglRenderer;
 var gui;
 
+var canvas = new Canvas(bufferWidth, bufferHeight);
+
 //------------------------------
 // Methods
 //------------------------------
@@ -1740,10 +1731,13 @@ function initialise() {
   createScene();
   createMesh();
   addLights();
+
+  initExportGif();
   //addControls();
   //LIGHT.randomize();
+
   resize(bufferWidth, bufferHeight);
-  animate();
+  processFrame();
 }
 
 function createRenderer() {
@@ -1850,19 +1844,134 @@ function getDateTime() {
     day = (day < 10 ? "0" : "") + day;
 
     return year + ":" + month + ":" + day + ":" + hour + ":" + min + ":" + sec;
-
 }
 
-function animate() {
+/**
+* Converts milliseconds to human readeable language separated by ":"
+* Example: 190980000 --> 2:05:3 --> 2days 5hours 3min
+*/
+function dhm(t){
+   var cd = 24 * 60 * 60 * 1000,
+       ch = 60 * 60 * 1000,
+       d = Math.floor(t / cd),
+       h = '0' + Math.floor( (t - d * cd) / ch),
+       m = '0' + Math.round( (t - d * cd - h * ch) / 60000);
+   return [d, h.substr(-2), m.substr(-2)].join(':');
+}
+
+var frameCount = 0;
+var lastFrameRenderTime = new Date().getTime();
+
+function processFrame() {
+  frameCount++;
+
+  var frame = frameCount;
+
+  var currentTime = new Date().getTime();
+  Logger.debug('Submitted next frame', frameCount, 'for rendering @', getDateTime());
+
+  if (frameCount > 30) {
+    //finishExportGif();
+    return;
+  }
+
+  Logger.debug('[' + frame + '] Frame render @', getDateTime());
+
+  // Calculate and render visualizations
   update(impulse);
   render();
-  console.log('Frame render @ ', getDateTime());
-  requestAnimationFrame(animate);
 
+  Logger.debug('[' + frame + '] Frame export @', getDateTime());
+
+  // Export visualization
+  // Store gif frame
+  gif.tick();
+
+  // Apply physics
   impulse -= impulse * 0.5;
   if (impulse < 0) {
     impulse = 0;
   }
+
+  var delta = currentTime-lastFrameRenderTime;
+  var deltaTime = dhm(delta);
+  Logger.debug('[' + frame + '] Total frame render time:', deltaTime);
+
+  // Store render time for next frame
+  lastFrameRenderTime = currentTime;
+
+  // Continue loop to next frame
+  requestAnimationFrame(processFrame);
+}
+
+function finishExportGif() {
+  var dataURI = gif.done();
+  Logger.debug('Rendered gif =', JSON.stringify(dataURI));
+}
+
+function createContext(canvas, opts, render) {
+  if (typeof opts === 'function') {
+    render = opts
+    opts = {}
+  } else {
+    opts = opts || {}
+  }
+
+Logger.debug('canvas.getContext = ' + canvas);
+  var gl = (
+    canvas.getContext('webgl', opts) ||
+    canvas.getContext('webgl-experimental', opts) ||
+    canvas.getContext('experimental-webgl', opts)
+  )
+
+  if (!gl) {
+    throw new Error('Unable to initialize WebGL')
+  }
+
+  render(gl);
+  return gl;
+
+  function tick() {
+    render(gl);
+    //raf(tick)
+  }
+}
+module.exports = createContext;
+
+function initExportGif() {
+  var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
+
+  //Clear screen to white
+  gl.clearColor(1, 1, 1, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  //Write output as a PPM formatted image
+  var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+  gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+  for(var i=0; i<pixels.length; i+=4) {
+    for(var j=0; j<3; ++j) {
+      //Logger.debug(pixels[i+j] + ' ');
+    }
+  }
+
+  exports.gl = gl;
+  gl.canvas = canvas;
+
+  Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
+  Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
+  Logger.debug('GL canvas = ' + gl.canvas);
+  //Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
+
+  //Logger.debug(exports.gl);
+
+  gif = GIF(exports.gl, {
+      fps: 24
+    , width: bufferWidth
+    , height: bufferHeight
+    , quality: 20
+    , dither: true
+  });
 }
 
 
@@ -1875,6 +1984,7 @@ function animate() {
 var lastTime = 0;
 
 var requestAnimationFrame = function(callback, element) {
+  Logger.debug('Submitted next frame for rendering.');
   var currentTime = new Date().getTime();
   var timeToCall = Math.max(0, 16 - (currentTime - lastTime));
   var id = setTimeout(callback(currentTime + timeToCall), timeToCall);
@@ -1936,12 +2046,5 @@ Mousetrap.bind('space', function() {
 
 // Let there be light!
 initialise();
-
-// Load gif
-initGif();
-
-/*  while (1>0) {
-  requestAnimationFrame(animate);
-}*/
 
 })();

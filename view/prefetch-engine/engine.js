@@ -1,7 +1,32 @@
-/*
-  Monkey Maya Video Processing Engine v0.1
-  Author: Ajay Bhaga
-*/
+/**
+
+Monkey Maya Video Processing Engine
+Author: Ajay Bhaga
+
+The MIT License (MIT)
+
+Copyright (c) 2014
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+**/
+
 'use strict';
 
 const port = 3000;
@@ -21,26 +46,9 @@ var request = require('request');
 // Include the public functions from 'libs.js'
 var libs = require('./libs.js');
 
-/*
-var delaunay = require('./js/delaunay.js');
-var Core = require('./js/Core.js');
-var Math = require('./js/Math.js');
-var Vector3 = require('./js/Vector3.js');
-var Vector4 = require('./js/Vector4.js');
-var Color = require('./js/Color.js');
-var Object = require('./js/Object.js');
-var Light = require('./js/Light.js');
-var Vertex = require('./js/Vertex.js');
-var Triangle = require('./js/Triangle.js');
-var Geometry = require('./js/Geometry.js');
-var Plane = require('./js/Plane.js');
-var Material = require('./js/Material.js');
-var Mesh = require('./js/Mesh.js');
-var Scene = require('./js/Scene.js');
-var loadgif = require('./js/loadgif.js');
-*/
-
 var corelib = libs.corelib;
+console.log('Available export methods: ', corelib);
+
 console.log('Available export methods: ', corelib);
 
 //var vertex = new libs.FSS.Vertex(0, 0, 0);

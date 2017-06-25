@@ -1,8 +1,11 @@
 /**
 
+Monkey Maya Video Processing Engine: Core Library
+Author: Ajay Bhaga
+
 The MIT License (MIT)
 
-Copyright (c) 2014 Maksim Surguy
+Copyright (c) 2014
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,9 +25,18 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+Thanks to Maksim Surguy for portions of base code.
+
 **/
 (function() {
   "use strict";
+
+  // Log messages will be written to the window's console.
+  var Logger = require('js-logger');
+
+  var version = 0.1;
+  Logger.useDefaults();
+  Logger.info('Monkey Maya Video Processing Engine v' + version);
 
   var img = {
     preview: null,
@@ -847,6 +859,7 @@ FSS.Mesh.prototype.update = function(renderer, lights, calculate) {
       //FSS.Vector4.set(triangle.color.rgba);
       triangle.color = getTriangleColor(triangle.centroid, this.getBBox(), renderer);
       //triangle.color = new FSS.Color(rgbToHex(255, 0, 255), 1);
+      Logger.debug('triangle.color = ', triangle.color);
 
       // Iterate through Lights
       for (l = lights.length - 1; l >= 0; l--) {
@@ -946,6 +959,444 @@ FSS.Scene.prototype = {
     }
     return this;
   }
+};
+
+/**
+ * @class Renderer
+ * @author Matthew Wagerfield
+ */
+FSS.Renderer = function() {
+  this.width = 0;
+  this.height = 0;
+  this.halfWidth = 0;
+  this.halfHeight = 0;
+};
+
+FSS.Renderer.prototype = {
+  setSize: function(width, height) {
+    if (this.width === width && this.height === height) return;
+    this.width = width;
+    this.height = height;
+    this.halfWidth = this.width * 0.5;
+    this.halfHeight = this.height * 0.5;
+    return this;
+  },
+  clear: function() {
+    return this;
+  },
+  render: function(scene) {
+    return this;
+  }
+};
+
+/**
+ * @class WebGL Renderer
+ * @author Matthew Wagerfield
+ */
+FSS.WebGLRenderer = function() {
+  FSS.Renderer.call(this);
+
+  // Set initial vertex and light count
+  this.vertices = null;
+  this.lights = null;
+
+  // Create parameters object
+  var parameters = {
+    preserveDrawingBuffer: false,
+    premultipliedAlpha: true,
+    antialias: true,
+    stencil: true,
+    alpha: true
+  };
+
+  // Create and configure the gl context
+  //this.gl = this.getContext(this.element, parameters);
+  var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
+
+  this.gl = gl;
+
+  // Set the internal support flag
+  this.unsupported = !this.gl;
+
+  // Setup renderer
+  if (this.unsupported) {
+    return 'WebGL is not supported by your browser.';
+  } else {
+    this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
+    this.gl.enable(this.gl.DEPTH_TEST);
+    this.setSize(bufferWidth, bufferHeight);
+  }
+};
+
+FSS.WebGLRenderer.prototype = Object.create(FSS.Renderer.prototype);
+
+FSS.WebGLRenderer.prototype.getContext = function(canvas, parameters) {
+  var context = false;
+  try {
+    if (!(context = canvas.getContext('experimental-webgl', parameters))) {
+      throw 'Error creating WebGL context.';
+    }
+  } catch (error) {
+    console.error(error);
+  }
+  return context;
+};
+
+FSS.WebGLRenderer.prototype.setSize = function(width, height) {
+  FSS.Renderer.prototype.setSize.call(this, width, height);
+  if (this.unsupported) return;
+
+  // Set the size of the canvas element
+  bufferWidth = width;
+  bufferHeight = height;
+
+  // Set the size of the gl viewport
+  this.gl.viewport(0, 0, width, height);
+  return this;
+};
+
+FSS.WebGLRenderer.prototype.clear = function() {
+  FSS.Renderer.prototype.clear.call(this);
+  if (this.unsupported) return;
+  this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+  return this;
+};
+
+FSS.WebGLRenderer.prototype.render = function(scene) {
+  FSS.Renderer.prototype.render.call(this, scene);
+  if (this.unsupported) return;
+  var m,mesh, t,tl,triangle, l,light,
+      attribute, uniform, buffer, data, location,
+      update = false, lights = scene.lights.length,
+      index, v,vl,vetex,vertices = 0;
+
+  // Clear context
+  this.clear();
+
+  console.log('GL render @ ', getDateTime());
+
+  // Build the shader program
+  if (this.lights !== lights) {
+    this.lights = lights;
+    if (this.lights > 0) {
+      this.buildProgram(lights);
+    } else {
+      return;
+    }
+  }
+
+  // Update program
+  if (!!this.program) {
+
+    // Increment vertex counter
+    for (m = scene.meshes.length - 1; m >= 0; m--) {
+      mesh = scene.meshes[m];
+      if (mesh.geometry.dirty) update = true;
+      mesh.update(this, scene.lights, false);
+      vertices += mesh.geometry.triangles.length*3;
+    }
+
+    // Compare vertex counter
+    if (update || this.vertices !== vertices) {
+      this.vertices = vertices;
+
+      // Build buffers
+      for (attribute in this.program.attributes) {
+        buffer = this.program.attributes[attribute];
+        buffer.data = new FSS.Array(vertices*buffer.size);
+
+        // Reset vertex index
+        index = 0;
+
+        // Update attribute buffer data
+        for (m = scene.meshes.length - 1; m >= 0; m--) {
+          mesh = scene.meshes[m];
+
+          for (t = 0, tl = mesh.geometry.triangles.length; t < tl; t++) {
+            triangle = mesh.geometry.triangles[t];
+
+            for (v = 0, vl = triangle.vertices.length; v < vl; v++) {
+              var vertex = triangle.vertices[v];
+              switch (attribute) {
+                case 'side':
+                  this.setBufferData(index, buffer, mesh.side);
+                  break;
+                case 'position':
+                  this.setBufferData(index, buffer, vertex.position);
+                  break;
+                case 'centroid':
+                  this.setBufferData(index, buffer, triangle.centroid);
+                  break;
+                case 'normal':
+                  this.setBufferData(index, buffer, triangle.normal);
+                  break;
+                case 'ambient':
+                  //this.setBufferData(index, buffer, mesh.material.ambient.rgba);
+                  this.setBufferData(index, buffer, triangle.color.rgba);
+                  break;
+                case 'diffuse':
+                  //this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
+                  this.setBufferData(index, buffer, triangle.color.rgba);
+                  break;
+              }
+              index++;
+            }
+          }
+        }
+
+        // Upload attribute buffer data
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer.buffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, buffer.data, this.gl.DYNAMIC_DRAW);
+        this.gl.enableVertexAttribArray(buffer.location);
+        this.gl.vertexAttribPointer(buffer.location, buffer.size, this.gl.FLOAT, false, 0, 0);
+      }
+    }
+
+    // Build uniform buffers
+    this.setBufferData(0, this.program.uniforms.resolution, [this.width, this.height, this.width]);
+    for (l = lights-1; l >= 0; l--) {
+      light = scene.lights[l];
+      this.setBufferData(l, this.program.uniforms.lightPosition, light.position);
+      this.setBufferData(l, this.program.uniforms.lightAmbient, light.ambient.rgba);
+      this.setBufferData(l, this.program.uniforms.lightDiffuse, light.diffuse.rgba);
+    }
+
+    // Update uniforms
+    for (uniform in this.program.uniforms) {
+      buffer = this.program.uniforms[uniform];
+      location = buffer.location;
+      data = buffer.data;
+      switch (buffer.structure) {
+        case '3f':
+          this.gl.uniform3f(location, data[0], data[1], data[2]);
+          break;
+        case '3fv':
+          this.gl.uniform3fv(location, data);
+          break;
+        case '4fv':
+          this.gl.uniform4fv(location, data);
+          break;
+      }
+    }
+  }
+
+  // Draw those lovely triangles
+  this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertices);
+  return this;
+};
+
+FSS.WebGLRenderer.prototype.setBufferData = function(index, buffer, value) {
+  if (FSS.Utils.isNumber(value)) {
+    buffer.data[index*buffer.size] = value;
+  } else {
+    for (var i = value.length - 1; i >= 0; i--) {
+      buffer.data[index*buffer.size+i] = value[i];
+    }
+  }
+};
+
+/**
+ * Concepts taken from three.js WebGLRenderer
+ * @see https://github.com/mrdoob/three.js/blob/master/src/renderers/WebGLRenderer.js
+ */
+FSS.WebGLRenderer.prototype.buildProgram = function(lights) {
+  if (this.unsupported) return;
+
+  // Create shader source
+  var vs = FSS.WebGLRenderer.VS(lights);
+  var fs = FSS.WebGLRenderer.FS(lights);
+
+  // Derive the shader fingerprint
+  var code = vs + fs;
+
+  // Check if the program has already been compiled
+  if (!!this.program && this.program.code === code) return;
+
+  // Create the program and shaders
+  var program = this.gl.createProgram();
+  var vertexShader = this.buildShader(this.gl.VERTEX_SHADER, vs);
+  var fragmentShader = this.buildShader(this.gl.FRAGMENT_SHADER, fs);
+
+  // Attach an link the shader
+  this.gl.attachShader(program, vertexShader);
+  this.gl.attachShader(program, fragmentShader);
+  this.gl.linkProgram(program);
+
+  // Add error handling
+  if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+    var error = this.gl.getError();
+    var status = this.gl.getProgramParameter(program, this.gl.VALIDATE_STATUS);
+    console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
+    return null;
+  }
+
+  // Delete the shader
+  this.gl.deleteShader(fragmentShader);
+  this.gl.deleteShader(vertexShader);
+
+  // Set the program code
+  program.code = code;
+
+  // Add the program attributes
+  program.attributes = {
+    side:     this.buildBuffer(program, 'attribute', 'aSide',     1, 'f' ),
+    position: this.buildBuffer(program, 'attribute', 'aPosition', 3, 'v3'),
+    centroid: this.buildBuffer(program, 'attribute', 'aCentroid', 3, 'v3'),
+    normal:   this.buildBuffer(program, 'attribute', 'aNormal',   3, 'v3'),
+    ambient:  this.buildBuffer(program, 'attribute', 'aAmbient',  4, 'v4'),
+    diffuse:  this.buildBuffer(program, 'attribute', 'aDiffuse',  4, 'v4')
+  };
+
+  // Add the program uniforms
+  program.uniforms = {
+    resolution:    this.buildBuffer(program, 'uniform', 'uResolution',    3, '3f',  1     ),
+    lightPosition: this.buildBuffer(program, 'uniform', 'uLightPosition', 3, '3fv', lights),
+    lightAmbient:  this.buildBuffer(program, 'uniform', 'uLightAmbient',  4, '4fv', lights),
+    lightDiffuse:  this.buildBuffer(program, 'uniform', 'uLightDiffuse',  4, '4fv', lights)
+  };
+
+  // Set the renderer program
+  this.program = program;
+
+  // Enable program
+  this.gl.useProgram(this.program);
+
+  // Return the program
+  return program;
+};
+
+FSS.WebGLRenderer.prototype.buildShader = function(type, source) {
+  if (this.unsupported) return;
+
+  // Create and compile shader
+  var shader = this.gl.createShader(type);
+  this.gl.shaderSource(shader, source);
+  this.gl.compileShader(shader);
+
+  // Add error handling
+  if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+    console.error(this.gl.getShaderInfoLog(shader));
+    return null;
+  }
+
+  // Return the shader
+  return shader;
+};
+
+FSS.WebGLRenderer.prototype.buildBuffer = function(program, type, identifier, size, structure, count) {
+  var buffer = {buffer:this.gl.createBuffer(), size:size, structure:structure, data:null};
+
+  // Set the location
+  switch (type) {
+    case 'attribute':
+      buffer.location = this.gl.getAttribLocation(program, identifier);
+      break;
+    case 'uniform':
+      buffer.location = this.gl.getUniformLocation(program, identifier);
+      break;
+  }
+
+  // Create the buffer if count is provided
+  if (!!count) {
+    buffer.data = new FSS.Array(count*size);
+  }
+
+  // Return the buffer
+  return buffer;
+};
+
+FSS.WebGLRenderer.VS = function(lights) {
+  var shader = [
+
+  // Precision
+  'precision mediump float;',
+
+  // Lights
+  '#define LIGHTS ' + lights,
+
+  // Attributes
+  'attribute float aSide;',
+  'attribute vec3 aPosition;',
+  'attribute vec3 aCentroid;',
+  'attribute vec3 aNormal;',
+  'attribute vec4 aAmbient;',
+  'attribute vec4 aDiffuse;',
+
+  // Uniforms
+  'uniform vec3 uResolution;',
+  'uniform vec3 uLightPosition[LIGHTS];',
+  'uniform vec4 uLightAmbient[LIGHTS];',
+  'uniform vec4 uLightDiffuse[LIGHTS];',
+
+  // Varyings
+  'varying vec4 vColor;',
+
+  // Main
+  'void main() {',
+
+    // Create color
+    'vColor = vec4(0.0);',
+
+    // Calculate the vertex position
+    'vec3 position = aPosition / uResolution * 2.0;',
+
+    // Iterate through lights
+    'for (int i = 0; i < LIGHTS; i++) {',
+      'vec3 lightPosition = uLightPosition[i];',
+      'vec4 lightAmbient = uLightAmbient[i];',
+      'vec4 lightDiffuse = uLightDiffuse[i];',
+
+      // Calculate illuminance
+      'vec3 ray = normalize(lightPosition - aCentroid);',
+      'float illuminance = dot(aNormal, ray);',
+      'if (aSide == 0.0) {',
+        'illuminance = max(illuminance, 0.0);',
+      '} else if (aSide == 1.0) {',
+        'illuminance = abs(min(illuminance, 0.0));',
+      '} else if (aSide == 2.0) {',
+        'illuminance = max(abs(illuminance), 0.0);',
+      '}',
+
+      // Calculate ambient light
+      'vColor += aAmbient * lightAmbient;',
+
+      // Calculate diffuse light
+      'vColor += aDiffuse * lightDiffuse * illuminance;',
+    '}',
+
+    // Clamp color
+    'vColor = clamp(vColor, 0.0, 1.0);',
+
+    // Set gl_Position
+    'gl_Position = vec4(position, 1.0);',
+
+  '}'
+
+  // Return the shader
+  ].join('\n');
+  return shader;
+};
+
+FSS.WebGLRenderer.FS = function(lights) {
+  var shader = [
+
+  // Precision
+  'precision mediump float;',
+
+  // Varyings
+  'varying vec4 vColor;',
+
+  // Main
+  'void main() {',
+
+    // Set gl_FragColor
+    'gl_FragColor = vColor;',
+
+  '}'
+
+  // Return the shader
+  ].join('\n');
+  return shader;
 };
 
 var request = require('request');
@@ -1192,199 +1643,305 @@ function readImage() {
   }
 }
 
-  var impulse = 0.0;
 
-  //------------------------------
-  // Mesh Properties
-  //------------------------------
-  var MESH = {
-    width: 1.2,
-    height: 1.2,
-    slices: 1200,
-    depth: 0,
-    maxdepth: 40,
-    ambient: '#000000',
-    diffuse: '#000000'
-  };
+var impulse = 0.0;
 
-  //------------------------------
-  // Light Properties
-  //------------------------------
-  var LIGHT = {
-    count: 0,
-    xPos : 0,
-    yPos : 200,
-    zOffset: 100,
-    ambient: '#FFFFFF',
-    diffuse: '#FFFFFF',
-    pickedup :true,
-    proxy : false,
-    currIndex : 0,
-    randomize : function(){
-      var x,y,z;
-      var decider = Math.floor(Math.random() * 3) + 1;
+//------------------------------
+// Mesh Properties
+//------------------------------
+var MESH = {
+  width: 1.2,
+  height: 1.2,
+  slices: 1200,
+  depth: 0,
+  maxdepth: 40,
+  ambient: '#000000',
+  diffuse: '#000000'
+};
 
-      if (decider == 1) MESH.depth = 0;
-      if (decider == 2) MESH.depth = Math.randomInRange(0, 150);
-      if (decider == 3) MESH.depth = Math.randomInRange(150, 200);
+//------------------------------
+// Light Properties
+//------------------------------
+var LIGHT = {
+  count: 0,
+  xPos : 0,
+  yPos : 200,
+  zOffset: 100,
+  ambient: '#FFFFFF',
+  diffuse: '#FFFFFF',
+  pickedup :true,
+  proxy : false,
+  currIndex : 0,
+  randomize : function(){
+    var x,y,z;
+    var decider = Math.floor(Math.random() * 3) + 1;
 
-      for (l = scene.lights.length - 1; l >= 0; l--) {
-        x = Math.randomInRange(-mesh.geometry.width/2, mesh.geometry.width/2);
-        y = Math.randomInRange(-mesh.geometry.height/2, mesh.geometry.height/2);
-        if(scene.lights.length > 2) z = Math.randomInRange(10, 80);
-        else z = Math.randomInRange(10, 100);
+    if (decider == 1) MESH.depth = 0;
+    if (decider == 2) MESH.depth = Math.randomInRange(0, 150);
+    if (decider == 3) MESH.depth = Math.randomInRange(150, 200);
 
-        light = scene.lights[l];
-        FSS.Vector3.set(light.position, x, y, z);
+    for (l = scene.lights.length - 1; l >= 0; l--) {
+      x = Math.randomInRange(-mesh.geometry.width/2, mesh.geometry.width/2);
+      y = Math.randomInRange(-mesh.geometry.height/2, mesh.geometry.height/2);
+      if(scene.lights.length > 2) z = Math.randomInRange(10, 80);
+      else z = Math.randomInRange(10, 100);
 
-        //var diffuse = getRandomColor();
-        //var ambient = getRandomColor();
-        var diffuse = '#FFFFFF';
-        var ambient = '#FFFFFF';
-
-        light.diffuse.set(diffuse);
-        light.diffuseHex = light.diffuse.format();
-
-        light.ambient.set(ambient);
-        light.ambientHex = light.ambient.format();
-
-        LIGHT.xPos    = x;
-        LIGHT.yPos    = y;
-        LIGHT.zOffset = z;
-        LIGHT.diffuse = diffuse;
-        LIGHT.ambient = ambient;
-
-        // Hacky way to allow manual update of the HEX colors for light's diffuse
-        gui.__folders.Light.__controllers[1].updateDisplay();
-        gui.__folders.Light.__controllers[2].updateDisplay();
-      }
-    }
-  };
-
-  //------------------------------
-  // Global Properties
-  //------------------------------
-  var center = FSS.Vector3.create();
-  var renderer, scene, mesh, geometry, material;
-
-  //------------------------------
-  // Methods
-  //------------------------------
-  function initialise() {
-    createScene();
-    createMesh();
-    addLights();
-    //addControls();
-    //LIGHT.randomize();
-    animate();
-  }
-
-  function createScene() {
-    scene = new FSS.Scene();
-  }
-
-  function createMesh() {
-    scene.remove(mesh);
-//    geometry = new FSS.Plane(MESH.width * canvas.width, MESH.height * canvas.height, MESH.slices, img);
-    geometry = new FSS.Plane(MESH.width, MESH.height, MESH.slices, img);
-
-    material = new FSS.Material(MESH.ambient, MESH.diffuse);
-    mesh = new FSS.Mesh(geometry, material);
-    scene.add(mesh);
-
-    // Augment vertices for depth modification
-    var v, vertex;
-    for (v = geometry.vertices.length - 1; v >= 0; v--) {
-      vertex = geometry.vertices[v];
-      vertex.depth = Math.randomInRange(0, MESH.maxdepth/10);
-      vertex.anchor = FSS.Vector3.clone(vertex.position);
-    }
-  }
-
-  // Add a single light
-  function addLight(ambient, diffuse, x, y, z) {
-    ambient = typeof ambient !== 'undefined' ? ambient : LIGHT.ambient;
-    diffuse = typeof diffuse !== 'undefined' ? diffuse : LIGHT.diffuse;
-    x = typeof x !== 'undefined' ? x : LIGHT.xPos;
-    y = typeof y !== 'undefined' ? y : LIGHT.yPos;
-    z = typeof z !== 'undefined' ? z : LIGHT.zOffset;
-
-    var light = new FSS.Light(ambient, diffuse);
-    light.ambientHex = light.ambient.format();
-    light.diffuseHex = light.diffuse.format();
-    light.setPosition(x, y, z);
-    scene.add(light);
-    LIGHT.diffuse = diffuse;
-    LIGHT.proxy = light;
-    LIGHT.pickedup = true;
-    LIGHT.currIndex++;
-  }
-
-  function addLights() {
-    //var num = Math.floor(Math.random() * 4) + 1;
-    var num = 1;
-
-    for (var i = num - 1; i >= 0; i--) {
-      addLight();
-      LIGHT.count++;
-    };
-  }
-
-  // Remove lights
-  function trimLights(value) {
-    for (l = value; l <= scene.lights.length; l++) {
       light = scene.lights[l];
-      scene.remove(light);
-      LIGHT.currIndex--;
+      FSS.Vector3.set(light.position, x, y, z);
+
+      //var diffuse = getRandomColor();
+      //var ambient = getRandomColor();
+      var diffuse = '#FFFFFF';
+      var ambient = '#FFFFFF';
+
+      light.diffuse.set(diffuse);
+      light.diffuseHex = light.diffuse.format();
+
+      light.ambient.set(ambient);
+      light.ambientHex = light.ambient.format();
+
+      LIGHT.xPos    = x;
+      LIGHT.yPos    = y;
+      LIGHT.zOffset = z;
+      LIGHT.diffuse = diffuse;
+      LIGHT.ambient = ambient;
+
+      // Hacky way to allow manual update of the HEX colors for light's diffuse
+      gui.__folders.Light.__controllers[1].updateDisplay();
+      gui.__folders.Light.__controllers[2].updateDisplay();
     }
-    LIGHT.proxy = scene.lights[LIGHT.currIndex-1];
-    LIGHT.pickedup = false;
+  }
+};
 
+//------------------------------
+// Render Properties
+//------------------------------
+var WEBGL = 'webgl';
+var RENDER = {
+  renderer: WEBGL
+};
+
+//------------------------------
+// Global Properties
+//------------------------------
+var center = FSS.Vector3.create();
+var renderer, scene, mesh, geometry, material;
+// xvfb buffer: 1280x1024x24
+var bufferWidth = 1280;
+var bufferHeight = 1024;
+var webglRenderer;
+var gui;
+
+//------------------------------
+// Methods
+//------------------------------
+function initialise() {
+  createRenderer();
+  createScene();
+  createMesh();
+  addLights();
+  //addControls();
+  //LIGHT.randomize();
+  resize(bufferWidth, bufferHeight);
+  animate();
+}
+
+function createRenderer() {
+  webglRenderer = new FSS.WebGLRenderer();
+  setRenderer(RENDER.renderer);
+}
+
+function setRenderer(index) {
+  // Force gl headless rendering
+  renderer = webglRenderer;
+  renderer.setSize(bufferWidth, bufferHeight);
+}
+
+function createScene() {
+  scene = new FSS.Scene();
+}
+
+function createMesh() {
+  scene.remove(mesh);
+  renderer.clear();
+  geometry = new FSS.Plane(MESH.width * renderer.width, MESH.height * renderer.height, MESH.slices, img);
+  material = new FSS.Material(MESH.ambient, MESH.diffuse);
+  mesh = new FSS.Mesh(geometry, material);
+  scene.add(mesh);
+
+  // Augment vertices for depth modification
+  var v, vertex;
+  for (v = geometry.vertices.length - 1; v >= 0; v--) {
+    vertex = geometry.vertices[v];
+    vertex.depth = Math.randomInRange(0, MESH.maxdepth/10);
+    vertex.anchor = FSS.Vector3.clone(vertex.position);
+  }
+}
+
+// Add a single light
+function addLight(ambient, diffuse, x, y, z) {
+  ambient = typeof ambient !== 'undefined' ? ambient : LIGHT.ambient;
+  diffuse = typeof diffuse !== 'undefined' ? diffuse : LIGHT.diffuse;
+  x = typeof x !== 'undefined' ? x : LIGHT.xPos;
+  y = typeof y !== 'undefined' ? y : LIGHT.yPos;
+  z = typeof z !== 'undefined' ? z : LIGHT.zOffset;
+
+  renderer.clear();
+  var light = new FSS.Light(ambient, diffuse);
+  light.ambientHex = light.ambient.format();
+  light.diffuseHex = light.diffuse.format();
+  light.setPosition(x, y, z);
+  scene.add(light);
+  LIGHT.diffuse = diffuse;
+  LIGHT.proxy = light;
+  LIGHT.pickedup = true;
+  LIGHT.currIndex++;
+}
+
+function addLights() {
+  //var num = Math.floor(Math.random() * 4) + 1;
+  var num = 1;
+
+  for (var i = num - 1; i >= 0; i--) {
+    addLight();
+    LIGHT.count++;
+  };
+}
+
+// Remove lights
+function trimLights(value) {
+  for (l = value; l <= scene.lights.length; l++) {
+    light = scene.lights[l];
+    scene.remove(light);
+    LIGHT.currIndex--;
+  }
+  LIGHT.proxy = scene.lights[LIGHT.currIndex-1];
+  LIGHT.pickedup = false;
+
+  renderer.clear();
+}
+
+// Resize canvas
+function resize(width, height) {
+  renderer.setSize(width, height);
+  FSS.Vector3.set(center, renderer.halfWidth, renderer.halfHeight);
+  createMesh();
+}
+
+function getDateTime() {
+
+    var date = new Date();
+
+    var hour = date.getHours();
+    hour = (hour < 10 ? "0" : "") + hour;
+
+    var min  = date.getMinutes();
+    min = (min < 10 ? "0" : "") + min;
+
+    var sec  = date.getSeconds();
+    sec = (sec < 10 ? "0" : "") + sec;
+
+    var year = date.getFullYear();
+
+    var month = date.getMonth() + 1;
+    month = (month < 10 ? "0" : "") + month;
+
+    var day  = date.getDate();
+    day = (day < 10 ? "0" : "") + day;
+
+    return year + ":" + month + ":" + day + ":" + hour + ":" + min + ":" + sec;
+
+}
+
+function animate() {
+  update(impulse);
+  render();
+  console.log('Frame render @ ', getDateTime());
+  requestAnimationFrame(animate);
+
+  impulse -= impulse * 0.5;
+  if (impulse < 0) {
+    impulse = 0;
+  }
+}
+
+
+/**
+ * Request Animation Frame Polyfill.
+ * @author Paul Irish
+ * @see https://gist.github.com/paulirish/1579671
+ */
+
+var lastTime = 0;
+
+var requestAnimationFrame = function(callback, element) {
+  var currentTime = new Date().getTime();
+  var timeToCall = Math.max(0, 16 - (currentTime - lastTime));
+  var id = setTimeout(callback(currentTime + timeToCall), timeToCall);
+  lastTime = currentTime + timeToCall;
+  return id;
+};
+
+var cancelAnimationFrame = function(id) {
+  clearTimeout(id);
+};
+
+function update(vibFactor) {
+  var v, vertex, offset = MESH.depth/100;
+
+  // Add depth to Vertices
+  for (v = geometry.vertices.length - 1; v >= 0; v--) {
+    vertex = geometry.vertices[v];
+    FSS.Vector3.set(vertex.position, 1, 1, vertex.depth*offset);
+    FSS.Vector3.add(vertex.position, vertex.anchor);
+
+    var dx =  Math.random()*vibFactor;
+    var dy =  -Math.random()*vibFactor;
+    //x =  vertex.position[0] + dx + 1;//+ Math.random()*width;
+    //y =  vertex.position[1] + dy;//- Math.random()*height;
+
+    //vertices[i] = [x, y];
+    var delta = FSS.Vector3.create(dx, dy, 0);
+    FSS.Vector3.add(vertex.position, delta);
   }
 
-  function animate() {
-    update(impulse);
-    //render();
-    //requestAnimationFrame(animate);
+  // Set the Geometry to dirty
+  geometry.dirty = true;
+}
 
-    impulse -= impulse * 0.5;
-    if (impulse < 0) {
-      impulse = 0;
-    }
-  }
+function render() {
+  renderer.render(scene);
+}
 
-  function update(vibFactor) {
-    var v, vertex, offset = MESH.depth/100;
+function getRandomColor(){
+  return '#'+(Math.random().toString(16) + '000000').slice(2, 8);
+}
 
-    // Add depth to Vertices
-    for (v = geometry.vertices.length - 1; v >= 0; v--) {
-      vertex = geometry.vertices[v];
-      FSS.Vector3.set(vertex.position, 1, 1, vertex.depth*offset);
-      FSS.Vector3.add(vertex.position, vertex.anchor);
+//------------------------------
+// Callbacks
+//------------------------------
 
-      var dx =  Math.random()*vibFactor;
-      var dy =  -Math.random()*vibFactor;
-      //x =  vertex.position[0] + dx + 1;//+ Math.random()*width;
-      //y =  vertex.position[1] + dy;//- Math.random()*height;
+/* SHATTER EFFECT
+// Pick up the light when a space is pressed
+Mousetrap.bind('space', function() {
+  createMesh();
+//    LIGHT.pickedup = !LIGHT.pickedup;
+  //createMesh();
+  impulse += 5.0;
+  //requestAnimationFrame(animate);
+  mesh.update(renderer, scene.lights, true);
 
-      //vertices[i] = [x, y];
-      var delta = FSS.Vector3.create(dx, dy, 0);
-      FSS.Vector3.add(vertex.position, delta);
-    }
+});
+*/
 
-    // Set the Geometry to dirty
-    geometry.dirty = true;
-  }
+// Let there be light!
+initialise();
 
-  function getRandomColor(){
-    return '#'+(Math.random().toString(16) + '000000').slice(2, 8);
-  }
+// Load gif
+initGif();
 
-  //------------------------------
-  // Callbacks
-  //------------------------------
-
-  // Let there be light!
-  initialise();
+/*  while (1>0) {
+  requestAnimationFrame(animate);
+}*/
 
 })();

@@ -31,15 +31,26 @@ Thanks to Maksim Surguy for portions of base code.
 (function() {
   "use strict";
 
+  // xvfb buffer: 1280x1024x24
+  var bufferWidth = 1280;
+  var bufferHeight = 1024;
+
   // Log messages will be written to the window's console.
   var Logger = require('js-logger');
   var request = require('request');
-  var Canvas = require('canvas');
   var GIFEncoder = require('gifencoder');
+  var Canvas = require('canvas');
   var fs = require('fs');
 
-  var Image = Canvas.Image;
   var canvas = new Canvas(bufferWidth, bufferHeight);
+  // use node-canvas
+  var ctx = canvas.getContext('2d');
+  var Image = Canvas.Image;
+  var encoder = new GIFEncoder(bufferWidth, bufferHeight);
+
+  function getRandomArbitrary(min, max) {
+    return Math.random() * (max - min) + min;
+  }
 
   var version = 0.1;
   Logger.useDefaults();
@@ -1717,9 +1728,6 @@ var RENDER = {
 //------------------------------
 var center = FSS.Vector3.create();
 var renderer, scene, mesh, geometry, material;
-// xvfb buffer: 1280x1024x24
-var bufferWidth = 1280;
-var bufferHeight = 1024;
 var webglRenderer;
 var gui;
 
@@ -1886,7 +1894,19 @@ function processFrame() {
 
   // Export visualization
   // Store gif frame
-  gif.tick();
+  var pixels = [];
+  for(var i=0; i<(bufferWidth * bufferHeight*4); i+=4) {
+    //for(var j=0; j<3; ++j) {
+    pixels[i+0] = getRandomArbitrary(0,255);
+    pixels[i+1] = getRandomArbitrary(0,255);
+    pixels[i+2] = getRandomArbitrary(0,255);
+    pixels[i+3] = 0;
+    //}
+  }
+
+  Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
+  // Write out the image into memory
+  encoder.addFrame(pixels);
 
   // Apply physics
   impulse -= impulse * 0.5;
@@ -1906,22 +1926,24 @@ function processFrame() {
 }
 
 function finishExportGif() {
-  var dataURI = gif.done();
-  Logger.debug('Rendered gif =', JSON.stringify(dataURI));
-}
 
-var encoder = null;
+  // gif.addFrame(pixels); // Write subsequent rgba arrays for more frames
+  encoder.finish();
+  Logger.debug('Encoding completed.');
+/*
+  var dataURI = gif.done();
+  Logger.debug('Rendered gif =', JSON.stringify(dataURI));*/
+}
 
 function initExportGif() {
   var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
 
-  var encoder = new GIFEncoder(gl.drawingBufferWidth, gl.drawingBufferHeight);
   // stream the results as they are available into myanimated.gif
-  encoder.createReadStream().pipe(fs.createWriteStream('myanimated.gif'));
+  encoder.createReadStream().pipe(fs.createWriteStream('render.gif'));
 
   encoder.start();
-  encoder.setRepeat(0);   // 0 for repeat, -1 for no-repeat
-  encoder.setDelay(500);  // frame delay in ms
+  encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
+  encoder.setDelay(50);  // frame delay in ms
   encoder.setQuality(10); // image quality. 10 is default.
 
   //Clear screen to white
@@ -1932,55 +1954,11 @@ function initExportGif() {
   var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
   gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-  for(var i=0; i<pixels.length; i+=4) {
-    for(var j=0; j<3; ++j) {
-      //Logger.debug(pixels[i+j] + ' ');
-    }
-  }
-
-  // use node-canvas
-  var canvas = new Canvas(gl.drawingBufferWidth, gl.drawingBufferHeight);
-  var ctx = canvas.getContext('2d');
-
-  // red rectangle
-  ctx.fillStyle = '#ff0000';
-  ctx.fillRect(0, 0, 320, 240);
-  encoder.addFrame(ctx);
-
-  // green rectangle
-  ctx.fillStyle = '#00ff00';
-  ctx.fillRect(0, 0, 320, 240);
-  encoder.addFrame(ctx);
-
-  // blue rectangle
-  ctx.fillStyle = '#0000ff';
-  ctx.fillRect(0, 0, 320, 240);
-  encoder.addFrame(ctx);
-
-  encoder.finish();
-  Logger.debug('Encoding completed.');
-
   exports.gl = gl;
-  //gl.canvas = canvas;
 
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
   Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
-  //Logger.debug('GL canvas = ' + gl.canvas);
-  //Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
 
-
-
-
-/*
-  //Logger.debug(exports.gl);
-
-  gif = GIF(exports.gl, {
-      fps: 24
-    , width: bufferWidth
-    , height: bufferHeight
-    , quality: 20
-    , dither: true
-  });*/
 }
 
 

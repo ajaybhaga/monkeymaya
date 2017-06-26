@@ -49,6 +49,10 @@ var libs = require('./libs.js');
 var corelib = libs.corelib;
 console.log('Available export methods: ', corelib);
 
+var inputFile = 'test.gif';
+console.log('Loading lib with', inputFile);
+corelib.loadLib(inputFile);
+
 //console.log('Available export methods: ', corelib);
 
 //var vertex = new libs.FSS.Vertex(0, 0, 0);

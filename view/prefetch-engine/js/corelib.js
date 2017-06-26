@@ -47,7 +47,18 @@ Thanks to Maksim Surguy for portions of base code.
   var GIFEncoder = require('gifencoder');
   var Canvas = require('canvas');
   var fs = require('fs');
-  var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
+
+  // Create parameters object
+  var parameters = {
+    preserveDrawingBuffer: false,
+    premultipliedAlpha: true,
+    antialias: true,
+    stencil: true,
+    alpha: true
+  };
+
+  var gl = require('gl')(bufferWidth, bufferHeight, parameters);
+//
   var gifyParse = require('gify-parse');
   var getPixels = require("get-pixels");
 
@@ -841,6 +852,9 @@ FSS.Plane = function(width, height, howmany, img) {
     this.vertices.push(v2);
     this.vertices.push(v3);
   }
+
+  Logger.debug('Calculated vertices for Delaunay triangles @', getDateTime());
+
 };
 
 FSS.Plane.prototype = Object.create(FSS.Geometry.prototype);
@@ -850,7 +864,7 @@ FSS.Plane.prototype = Object.create(FSS.Geometry.prototype);
  * @author Matthew Wagerfield
  */
 FSS.Material = function(ambient, diffuse) {
-  this.ambient = new FSS.Color(ambient || '#444444');
+  this.ambient = new FSS.Color(ambient || '#FFFFFF');
   this.diffuse = new FSS.Color(diffuse || '#FFFFFF');
   this.slave = new FSS.Color();
 };
@@ -887,8 +901,8 @@ FSS.Mesh.prototype.update = function(renderer, lights, calculate) {
       // Reset Triangle Color
       //FSS.Vector4.set(triangle.color.rgba);
       triangle.color = getTriangleColor(triangle.centroid, this.getBBox(), renderer);
-      //triangle.color = new FSS.Color(rgbToHex(255, 0, 255), 1);
-      //Logger.debug('triangle.color = ', triangle.color);
+      triangle.color = new FSS.Color(rgbToHex(getRandomArbitrary(0,255), getRandomArbitrary(0,255), getRandomArbitrary(0,255)), 1);
+  //    Logger.debug('triangle.color = ', triangle.color);
 
       // Iterate through Lights
       for (l = lights.length - 1; l >= 0; l--) {
@@ -1032,15 +1046,6 @@ FSS.WebGLRenderer = function(gl) {
   // Set gl
   this.gl = gl;
 
-  // Create parameters object
-  var parameters = {
-    preserveDrawingBuffer: false,
-    premultipliedAlpha: true,
-    antialias: true,
-    stencil: true,
-    alpha: true
-  };
-
   // Create and configure the gl context
   //this.gl = this.getContext(this.element, parameters);
 
@@ -1167,12 +1172,12 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
                   this.setBufferData(index, buffer, triangle.normal);
                   break;
                 case 'ambient':
-                  //this.setBufferData(index, buffer, mesh.material.ambient.rgba);
-                  this.setBufferData(index, buffer, triangle.color.rgba);
+                  this.setBufferData(index, buffer, mesh.material.ambient.rgba);
+                  //this.setBufferData(index, buffer, triangle.color.rgba);
                   break;
                 case 'diffuse':
-                  //this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
-                  this.setBufferData(index, buffer, triangle.color.rgba);
+                  this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
+                  //this.setBufferData(index, buffer, triangle.color.rgba);
                   break;
               }
               index++;
@@ -1189,7 +1194,9 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
     }
 
     // Build uniform buffers
-    this.setBufferData(0, this.program.uniforms.resolution, [this.width, this.height, this.width]);
+//    this.setBufferData(0, this.program.uniforms.resolution, [0, 0, this.width]);
+    this.setBufferData(0, this.program.uniforms.resolution, [this.width*2, this.height*2, this.width*2]);
+
     for (l = lights-1; l >= 0; l--) {
       light = scene.lights[l];
       this.setBufferData(l, this.program.uniforms.lightPosition, light.position);
@@ -1218,8 +1225,10 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
 
   // Draw those lovely triangles
   this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertices);
+  //this.gl.drawArrays(this.gl.GL_LINE_STRIP, 0, this.vertices);
+  this.gl.flush();
 
-  Logger.debug('WebGLRenderer vertices @', this.vertices);
+  Logger.debug('WebGLRenderer # of vertices @', this.vertices);
   Logger.debug('WebGLRenderer draw arrays @', getDateTime());
   return this;
 };
@@ -1382,6 +1391,7 @@ FSS.WebGLRenderer.VS = function(lights) {
 
     // Calculate the vertex position
     'vec3 position = aPosition / uResolution * 2.0;',
+  //  'vec3 position = aPosition / 1000.0;',
 
     // Iterate through lights
     'for (int i = 0; i < LIGHTS; i++) {',
@@ -1434,6 +1444,7 @@ FSS.WebGLRenderer.FS = function(lights) {
 
     // Set gl_FragColor
     'gl_FragColor = vColor;',
+    //'gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);',
 
   '}'
 
@@ -1692,8 +1703,8 @@ var MESH = {
   slices: 1200,
   depth: 0,
   maxdepth: 40,
-  ambient: '#000000',
-  diffuse: '#000000'
+  ambient: '#FFFFFF',
+  diffuse: '#FFFFFF'
 };
 
 //------------------------------
@@ -1743,9 +1754,6 @@ var LIGHT = {
       LIGHT.diffuse = diffuse;
       LIGHT.ambient = ambient;
 
-      // Hacky way to allow manual update of the HEX colors for light's diffuse
-      gui.__folders.Light.__controllers[1].updateDisplay();
-      gui.__folders.Light.__controllers[2].updateDisplay();
     }
   }
 };
@@ -1764,7 +1772,6 @@ var RENDER = {
 var center = FSS.Vector3.create();
 var renderer, scene, mesh, geometry, material;
 var webglRenderer;
-var gui;
 
 //------------------------------
 // Methods
@@ -1944,6 +1951,11 @@ function processFrame() {
 
   Logger.debug('[' + frame + '] Frame render @', getDateTime());
 
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  // Clear screen to random color
+//  gl.clearColor(getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1), 1);
+  gl.clearColor(1.0, 0.0, 0.0, 1);
+
 
   // Calculate and render visualizations
   mesh.update(renderer, scene.lights, true);
@@ -1964,12 +1976,10 @@ function processFrame() {
   }
 
 
-  //gl.clear(gl.COLOR_BUFFER_BIT);
-  // Clear screen to random color
-  //gl.clearColor(getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1), 1);
 
   //getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1)
 
+/*
   // Creates fragment shader (returns white color for any position)
   var fshader = gl.createShader(gl.FRAGMENT_SHADER);
   gl.shaderSource(fshader, 'void main(void) {gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);}');
@@ -1998,6 +2008,8 @@ function processFrame() {
   {alert('Error during program validation:\n' + gl.getProgramInfoLog(program));return;}
   gl.useProgram(program);
 
+// equiv
+
   // Gets address of the input 'attribute' of the vertex shader
   var vattrib = gl.getAttribLocation(program, 'ppos');
   if(vattrib == -1)
@@ -2015,7 +2027,7 @@ function processFrame() {
 
   // Draws the object
   gl.drawArrays(gl.TRIANGLES, 0, 3);
-//  gl.flush();
+//  gl.flush();*/
 
 
 
@@ -2074,13 +2086,15 @@ function initExportGif(filename) {
 
 var lastTime = 0;
 
-var requestAnimationFrame = function(callback, element) {
-  Logger.debug('Submitted next frame for rendering.');
-  var currentTime = new Date().getTime();
-  var timeToCall = Math.max(0, 16 - (currentTime - lastTime));
-  var id = setTimeout(callback(currentTime + timeToCall), timeToCall);
-  lastTime = currentTime + timeToCall;
-  return id;
+var requestAnimationFrame = function(callback) {
+  if (callback) {
+    Logger.debug('Submitted next frame for rendering.');
+    var currentTime = new Date().getTime();
+    var timeToCall = Math.max(0, 16 - (currentTime - lastTime));
+    var id = setTimeout(function() { callback(currentTime + timeToCall); }, timeToCall);
+    lastTime = currentTime + timeToCall;
+    return id;
+  }
 };
 
 var cancelAnimationFrame = function(id) {
@@ -2135,6 +2149,9 @@ Mousetrap.bind('space', function() {
 });
 */
 
-initialise('test.gif');
+function loadLib(inputFile) {
+  initialise(inputFile);
+}
+exports.loadLib = loadLib;
 
 })();

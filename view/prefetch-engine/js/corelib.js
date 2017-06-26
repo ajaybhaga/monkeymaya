@@ -35,6 +35,12 @@ Thanks to Maksim Surguy for portions of base code.
   var bufferWidth = 1280;
   var bufferHeight = 1024;
 
+  var gifData = {
+    frames: [],
+    width: 0,
+    height: 0
+  }
+
   // Log messages will be written to the window's console.
   var Logger = require('js-logger');
   var request = require('request');
@@ -42,7 +48,10 @@ Thanks to Maksim Surguy for portions of base code.
   var Canvas = require('canvas');
   var fs = require('fs');
   var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
-  //exports.gl = gl;
+  var gifyParse = require('gify-parse');
+  var getPixels = require("get-pixels");
+
+  exports.gl = gl;
 
   var canvas = new Canvas(bufferWidth, bufferHeight);
   // use node-canvas
@@ -51,7 +60,7 @@ Thanks to Maksim Surguy for portions of base code.
   var encoder = new GIFEncoder(bufferWidth, bufferHeight);
 
   function getRandomArbitrary(min, max) {
-    return Math.random() * (max - min) + min;
+    return Math.round(Math.random() * (max - min) + min);
   }
 
   var version = 0.1;
@@ -879,7 +888,7 @@ FSS.Mesh.prototype.update = function(renderer, lights, calculate) {
       //FSS.Vector4.set(triangle.color.rgba);
       triangle.color = getTriangleColor(triangle.centroid, this.getBBox(), renderer);
       //triangle.color = new FSS.Color(rgbToHex(255, 0, 255), 1);
-      Logger.debug('triangle.color = ', triangle.color);
+      //Logger.debug('triangle.color = ', triangle.color);
 
       // Iterate through Lights
       for (l = lights.length - 1; l >= 0; l--) {
@@ -1013,12 +1022,15 @@ FSS.Renderer.prototype = {
  * @class WebGL Renderer
  * @author Matthew Wagerfield
  */
-FSS.WebGLRenderer = function() {
+FSS.WebGLRenderer = function(gl) {
   FSS.Renderer.call(this);
 
   // Set initial vertex and light count
   this.vertices = null;
   this.lights = null;
+
+  // Set gl
+  this.gl = gl;
 
   // Create parameters object
   var parameters = {
@@ -1042,10 +1054,17 @@ FSS.WebGLRenderer = function() {
     this.gl.clearColor(0.0, 0.0, 0.0, 0.0);
     this.gl.enable(this.gl.DEPTH_TEST);
     this.setSize(bufferWidth, bufferHeight);
+    Logger.debug('Setting size', bufferWidth, 'x', bufferHeight);
   }
 };
 
 FSS.WebGLRenderer.prototype = Object.create(FSS.Renderer.prototype);
+
+FSS.WebGLRenderer.prototype.setGL = function(gl) {
+  this.gl = gl;
+  Logger.debug('Setting gl for WebGLRenderer to', gl)
+};
+
 
 FSS.WebGLRenderer.prototype.getContext = function(canvas, parameters) {
   var context = false;
@@ -1081,6 +1100,8 @@ FSS.WebGLRenderer.prototype.clear = function() {
 
 FSS.WebGLRenderer.prototype.render = function(scene) {
   FSS.Renderer.prototype.render.call(this, scene);
+  Logger.debug('WebGLRenderer render @', getDateTime());
+
   if (this.unsupported) return;
   var m,mesh, t,tl,triangle, l,light,
       attribute, uniform, buffer, data, location,
@@ -1089,8 +1110,6 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
 
   // Clear context
   this.clear();
-
-  Logger.debug('GL render @ ', getDateTime());
 
   // Build the shader program
   if (this.lights !== lights) {
@@ -1199,6 +1218,9 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
 
   // Draw those lovely triangles
   this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertices);
+
+  Logger.debug('WebGLRenderer vertices @', this.vertices);
+  Logger.debug('WebGLRenderer draw arrays @', getDateTime());
   return this;
 };
 
@@ -1218,6 +1240,8 @@ FSS.WebGLRenderer.prototype.setBufferData = function(index, buffer, value) {
  */
 FSS.WebGLRenderer.prototype.buildProgram = function(lights) {
   if (this.unsupported) return;
+
+  Logger.debug('WebGLRenderer building program @', getDateTime());
 
   // Create shader source
   var vs = FSS.WebGLRenderer.VS(lights);
@@ -1416,7 +1440,6 @@ FSS.WebGLRenderer.FS = function(lights) {
   return shader;
 };
 
-var frames = [];
 var transparency = null;
 var delay = null;
 var disposalMethod = null;
@@ -1466,7 +1489,6 @@ function generateGrayscale() {
   var image_data = ctx.getImageData(0, 0, canvas.width, canvas.height);
   img.grayscale = new jsfeat.matrix_t(canvas.width, canvas.height, jsfeat.U8_t | jsfeat.C1_t);
   jsfeat.imgproc.grayscale(image_data.data, canvas.width, canvas.height, img.grayscale);
-  img.loaded = true;
 }
 
 function rgbToHex(r, g, b) {
@@ -1477,10 +1499,10 @@ function rgbToHex(r, g, b) {
 function getTriangleColor(centroid, bBox, renderer) {
 
   var count = 0;
-  var gradientData = []
+  var gradientData = [];
 
-  // paint images
-  if (this && img.loaded) {
+  // Use gif color if loaded
+  if (gifData.width != 0) {
 
     ///var sx = Math.floor( img.canvas.width * (box.x + box.width/2) / svg.width );
     //var sy = Math.floor( img.canvas.height * (box.y + box.height/2) / svg.height );
@@ -1497,12 +1519,20 @@ function getTriangleColor(centroid, bBox, renderer) {
 
     //Logger.debug('bBox[0]=',bBox[0],'bBox[1]=',bBox[1],'bBox[1]-bBox[0]=',bBox[1]-bBox[0]);
 
-    var sx = Math.floor(img.canvas.width * (x / (bBox[1]-bBox[0])));
-    var sy = Math.floor(img.canvas.height * (y / (bBox[3]-bBox[2])));
+    var sx = Math.floor(gifData.width * (x / (bBox[1]-bBox[0])));
+    var sy = Math.floor(gifData.height * (y / (bBox[3]-bBox[2])));
 
-    var iy = img.canvas.height-sy;
+    var iy = gifData.height-sy;
     //Logger.debug('sx=',sx,'sy=',sy);
-    var px = img.context.getImageData(sx, iy, 1, 1).data;
+    //var px = img.context.getImageData(sx, iy, 1, 1).data;
+
+    var r = getRandomArbitrary(0,255);//gifData.frames[0][iy*gifData.width + sx + 0];
+    var g = getRandomArbitrary(0,255);//gifData.frames[0][iy*gifData.width + sx + 1];
+    var b = getRandomArbitrary(0,255);//gifData.frames[0][iy*gifData.width + sx + 2];
+
+    //Logger.debug('gif data [r]=',r);
+    //Logger.debug('gif data [g]=',g);
+    //Logger.debug('gif data [b]=',b);
 
     //Logger.debug('x=',x);
     //Logger.debug('y=',y);
@@ -1525,11 +1555,12 @@ function getTriangleColor(centroid, bBox, renderer) {
 
     //return FSS.Vector4.create(px[0] / 255, px[1] / 255, px[2] / 255, 1);
 
-    var color = new FSS.Color(rgbToHex(px[0], px[1], px[2]), 1);
-    //Logger.debug('color =',color);
+    var color = new FSS.Color(rgbToHex(r, g, b), 1);
+    Logger.debug('color =',color);
     return color;
   }
 
+  Logger.debug('No gif loaded, defaulting to black.');
 
   // Return blank rgba
   var color = new FSS.Color(rgbToHex(0, 0, 0), 1);
@@ -1736,7 +1767,7 @@ var gui;
 //------------------------------
 // Methods
 //------------------------------
-function initialise() {
+function initialise(inputGifFile) {
   Logger.debug('Creating renderer.');
   createRenderer();
   Logger.debug('Creating scene.');
@@ -1746,20 +1777,37 @@ function initialise() {
   Logger.debug('Adding lights.');
   addLights();
 
-  Logger.debug('Initializing export gif.');
-  initExportGif('render.gif');
+  Logger.debug('Retrieving gif.');
 
-  //addControls();
-  //LIGHT.randomize();
+  getPixels(inputGifFile, function(err, pixels) {
+    if(err) {
+      Logger.debug("Bad image path");
+      return;
+    }
+    //Logger.debug("pixel data", pixels.data);
+    Logger.debug("Input gif width =", pixels.shape[1]);
+    Logger.debug("Input gif height =", pixels.shape[2]);
+    gifData.width = pixels.shape[1];
+    gifData.height = pixels.shape[2];
+    //[numFrames, width, height, 4]
+    gifData.frames.push(pixels.data);
+    Logger.debug("Stored frames =", gifData.frames.length);
 
-  resize(bufferWidth, bufferHeight);
+    Logger.debug('Initializing export gif.');
+    initExportGif('render.gif');
 
-  Logger.debug('Starting rendering process.');
-  processFrame();
+    //addControls();
+    //LIGHT.randomize();
+
+    resize(bufferWidth, bufferHeight);
+
+    Logger.debug('Starting rendering process.');
+    processFrame();
+  });
 }
 
 function createRenderer() {
-  webglRenderer = new FSS.WebGLRenderer();
+  webglRenderer = new FSS.WebGLRenderer(gl);
   setRenderer(RENDER.renderer);
 }
 
@@ -1884,11 +1932,9 @@ function processFrame() {
   frameCount++;
 
   var frame = frameCount;
-
   var currentTime = new Date().getTime();
-  Logger.debug('Submitted next frame', frameCount, 'for rendering @', getDateTime());
 
-  if (frameCount > 3) {
+  if (frameCount > 10) {
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
     return;
@@ -1896,11 +1942,12 @@ function processFrame() {
 
   Logger.debug('[' + frame + '] Frame render @', getDateTime());
 
+
   // Calculate and render visualizations
+  mesh.update(renderer, scene.lights, true);
   update(impulse);
   render();
 
-  Logger.debug('[' + frame + '] Frame export @', getDateTime());
 
   // Export visualization
   // Store gif frame
@@ -1914,13 +1961,62 @@ function processFrame() {
     //}
   }
 
+
+  //gl.clear(gl.COLOR_BUFFER_BIT);
   // Clear screen to random color
-  gl.clearColor(getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1), 1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
+  //gl.clearColor(getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1), 1);
 
-  // Do GL visualizations
-  mesh.update(renderer, scene.lights, true);
 
+  // Creates fragment shader (returns white color for any position)
+  var fshader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fshader, 'void main(void) {gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);}');
+  gl.compileShader(fshader);
+  if (!gl.getShaderParameter(fshader, gl.COMPILE_STATUS))
+  {alert('Error during fragment shader compilation:\n' + gl.getShaderInfoLog(fshader)); return;}
+
+  // Creates vertex shader (converts 2D point position to coordinates)
+  var vshader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vshader, 'attribute vec2 ppos; void main(void) { gl_Position = vec4(ppos.x, ppos.y, 0.0, 1.0);}');
+  gl.compileShader(vshader);
+  if (!gl.getShaderParameter(vshader, gl.COMPILE_STATUS))
+  {alert('Error during vertex shader compilation:\n' + gl.getShaderInfoLog(vshader)); return;}
+
+  // Creates program and links shaders to it
+  var program = gl.createProgram();
+  gl.attachShader(program, fshader);
+  gl.attachShader(program, vshader);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+  {alert('Error during program linking:\n' + gl.getProgramInfoLog(program));return;}
+
+  // Validates and uses program in the GL context
+  gl.validateProgram(program);
+  if (!gl.getProgramParameter(program, gl.VALIDATE_STATUS))
+  {alert('Error during program validation:\n' + gl.getProgramInfoLog(program));return;}
+  gl.useProgram(program);
+
+  // Gets address of the input 'attribute' of the vertex shader
+  var vattrib = gl.getAttribLocation(program, 'ppos');
+  if(vattrib == -1)
+  {alert('Error during attribute address retrieval');return;}
+  gl.enableVertexAttribArray(vattrib);
+
+  // Initializes the vertex buffer and sets it as current one
+  var vbuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbuffer);
+
+  // Puts vertices to buffer and links it to attribute variable 'ppos'
+  var vertices = new Float32Array([0.0,0.5,-0.5,-0.5,0.5,-0.5]);
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(vattrib, 2, gl.FLOAT, false, 0, 0);
+
+  // Draws the object
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.flush();
+
+
+
+  Logger.debug('[' + frame + '] Frame export @', getDateTime());
   // Read pixels from gl buffer
   var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
   gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
@@ -1966,7 +2062,6 @@ function initExportGif(filename) {
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
   Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
 }
-
 
 /**
  * Request Animation Frame Polyfill.
@@ -2037,7 +2132,6 @@ Mousetrap.bind('space', function() {
 });
 */
 
-// Let there be light!
-initialise();
+initialise('test.gif');
 
 })();

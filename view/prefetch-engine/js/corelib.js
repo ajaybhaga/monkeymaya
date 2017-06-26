@@ -1302,6 +1302,8 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights) {
   // Enable program
   this.gl.useProgram(this.program);
 
+  Logger.debug('Using program,', this.program);
+
   // Return the program
   return program;
 };
@@ -1556,7 +1558,7 @@ function getTriangleColor(centroid, bBox, renderer) {
     //return FSS.Vector4.create(px[0] / 255, px[1] / 255, px[2] / 255, 1);
 
     var color = new FSS.Color(rgbToHex(r, g, b), 1);
-    Logger.debug('color =',color);
+    //Logger.debug('color =',color);
     return color;
   }
 
@@ -1966,10 +1968,11 @@ function processFrame() {
   // Clear screen to random color
   //gl.clearColor(getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1), 1);
 
+  //getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1)
 
   // Creates fragment shader (returns white color for any position)
   var fshader = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fshader, 'void main(void) {gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);}');
+  gl.shaderSource(fshader, 'void main(void) {gl_FragColor = vec4(1.0, 0.0, 1.0, 1.0);}');
   gl.compileShader(fshader);
   if (!gl.getShaderParameter(fshader, gl.COMPILE_STATUS))
   {alert('Error during fragment shader compilation:\n' + gl.getShaderInfoLog(fshader)); return;}
@@ -2012,7 +2015,7 @@ function processFrame() {
 
   // Draws the object
   gl.drawArrays(gl.TRIANGLES, 0, 3);
-  gl.flush();
+//  gl.flush();
 
 
 

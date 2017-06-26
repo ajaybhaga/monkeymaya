@@ -1172,12 +1172,12 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
                   this.setBufferData(index, buffer, triangle.normal);
                   break;
                 case 'ambient':
-                  this.setBufferData(index, buffer, mesh.material.ambient.rgba);
-                  //this.setBufferData(index, buffer, triangle.color.rgba);
+                  //this.setBufferData(index, buffer, mesh.material.ambient.rgba);
+                  this.setBufferData(index, buffer, triangle.color.rgba);
                   break;
                 case 'diffuse':
-                  this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
-                  //this.setBufferData(index, buffer, triangle.color.rgba);
+                  //this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
+                  this.setBufferData(index, buffer, triangle.color.rgba);
                   break;
               }
               index++;
@@ -1224,7 +1224,9 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
   }
 
   // Draw those lovely triangles
-  this.gl.drawArrays(this.gl.TRIANGLES, 0, this.vertices);
+  this.gl.drawArrays(this.gl.LINE_STRIP, 0, this.vertices);
+  //this.gl.drawArrays(this.gl.GL_TRIANGLE_FAN, 0, this.vertices);
+
   //this.gl.drawArrays(this.gl.GL_LINE_STRIP, 0, this.vertices);
   this.gl.flush();
 
@@ -1387,7 +1389,7 @@ FSS.WebGLRenderer.VS = function(lights) {
   'void main() {',
 
     // Create color
-    'vColor = vec4(0.0);',
+    'vColor = vec4(1.0);',
 
     // Calculate the vertex position
     'vec3 position = aPosition / uResolution * 2.0;',
@@ -1411,10 +1413,10 @@ FSS.WebGLRenderer.VS = function(lights) {
       '}',
 
       // Calculate ambient light
-      'vColor += aAmbient * lightAmbient;',
+      //'vColor += aAmbient * lightAmbient;',
 
       // Calculate diffuse light
-      'vColor += aDiffuse * lightDiffuse * illuminance;',
+      //'vColor += aDiffuse * lightDiffuse * illuminance;',
     '}',
 
     // Clamp color
@@ -1785,6 +1787,7 @@ function initialise(inputGifFile) {
   createMesh();
   Logger.debug('Adding lights.');
   addLights();
+  resize(bufferWidth, bufferHeight);
 
   Logger.debug('Retrieving gif.');
 
@@ -1808,7 +1811,7 @@ function initialise(inputGifFile) {
     //addControls();
     //LIGHT.randomize();
 
-    resize(bufferWidth, bufferHeight);
+
 
     Logger.debug('Starting rendering process.');
     processFrame();
@@ -1943,7 +1946,7 @@ function processFrame() {
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount > 10) {
+  if (frameCount > 3) {
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
     return;
@@ -1954,14 +1957,14 @@ function processFrame() {
   gl.clear(gl.COLOR_BUFFER_BIT);
   // Clear screen to random color
 //  gl.clearColor(getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1), 1);
-  gl.clearColor(1.0, 0.0, 0.0, 1);
+  gl.clearColor(1.0, 0.0, 1.0, 1);
 
 
+  createMesh();
   // Calculate and render visualizations
   mesh.update(renderer, scene.lights, true);
   update(impulse);
   render();
-
 
   // Export visualization
   // Store gif frame

@@ -41,6 +41,8 @@ Thanks to Maksim Surguy for portions of base code.
   var GIFEncoder = require('gifencoder');
   var Canvas = require('canvas');
   var fs = require('fs');
+  var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
+  //exports.gl = gl;
 
   var canvas = new Canvas(bufferWidth, bufferHeight);
   // use node-canvas
@@ -927,7 +929,7 @@ FSS.Mesh.prototype.getBBox = function() {
     triangle = this.geometry.triangles[t];
     var vertices = triangle.vertices;
 
-    for (i = 0; i < 2; i++) {
+    for (var i = 0; i < 2; i++) {
       var vertex = vertices[i];
 
       if (vertex.position[0] < xMin) {
@@ -1473,7 +1475,6 @@ function rgbToHex(r, g, b) {
 
 // Returns a Vector4 rgba representing triangle color
 function getTriangleColor(centroid, bBox, renderer) {
-  //
 
   var count = 0;
   var gradientData = []
@@ -1526,13 +1527,14 @@ function getTriangleColor(centroid, bBox, renderer) {
 
     var color = new FSS.Color(rgbToHex(px[0], px[1], px[2]), 1);
     //Logger.debug('color =',color);
-    return color ;
+    return color;
   }
+
 
   // Return blank rgba
   var color = new FSS.Color(rgbToHex(0, 0, 0), 1);
   //Logger.debug('color =',color);
-  return color ;
+  return color;
 }
 
     //fill = "rgb("+px[0]+","+px[1]+","+px[2]+")"
@@ -1735,16 +1737,24 @@ var gui;
 // Methods
 //------------------------------
 function initialise() {
+  Logger.debug('Creating renderer.');
   createRenderer();
+  Logger.debug('Creating scene.');
   createScene();
+  Logger.debug('Creating mesh.');
   createMesh();
+  Logger.debug('Adding lights.');
   addLights();
 
-  initExportGif();
+  Logger.debug('Initializing export gif.');
+  initExportGif('render.gif');
+
   //addControls();
   //LIGHT.randomize();
 
   resize(bufferWidth, bufferHeight);
+
+  Logger.debug('Starting rendering process.');
   processFrame();
 }
 
@@ -1904,6 +1914,17 @@ function processFrame() {
     //}
   }
 
+  // Clear screen to random color
+  gl.clearColor(getRandomArbitrary(0,1), getRandomArbitrary(0,1), getRandomArbitrary(0,1), 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // Do GL visualizations
+  mesh.update(renderer, scene.lights, true);
+
+  // Read pixels from gl buffer
+  var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+  gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
   Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
   // Write out the image into memory
   encoder.addFrame(pixels);
@@ -1927,38 +1948,23 @@ function processFrame() {
 
 function finishExportGif() {
 
-  // gif.addFrame(pixels); // Write subsequent rgba arrays for more frames
   encoder.finish();
   Logger.debug('Encoding completed.');
-/*
-  var dataURI = gif.done();
-  Logger.debug('Rendered gif =', JSON.stringify(dataURI));*/
+
 }
 
-function initExportGif() {
-  var gl = require('gl')(bufferWidth, bufferHeight, { preserveDrawingBuffer: true });
+function initExportGif(filename) {
 
   // stream the results as they are available into myanimated.gif
-  encoder.createReadStream().pipe(fs.createWriteStream('render.gif'));
+  encoder.createReadStream().pipe(fs.createWriteStream(filename));
 
   encoder.start();
   encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
   encoder.setDelay(50);  // frame delay in ms
   encoder.setQuality(10); // image quality. 10 is default.
 
-  //Clear screen to white
-  gl.clearColor(1, 1, 1, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  //Write output as a PPM formatted image
-  var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
-  gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-  exports.gl = gl;
-
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
   Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
-
 }
 
 

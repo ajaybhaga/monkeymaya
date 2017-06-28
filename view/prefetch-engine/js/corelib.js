@@ -1124,7 +1124,7 @@ FSS.WebGLRenderer.prototype.clear = function() {
   return this;
 };
 
-FSS.WebGLRenderer.prototype.render = function(scene) {
+FSS.WebGLRenderer.prototype.render = function(scene, program, callback) {
   FSS.Renderer.prototype.render.call(this, scene);
   Logger.debug('WebGLRenderer render @', getDateTime());
 
@@ -1134,8 +1134,7 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
       update = false, lights = scene.lights.length,
       index, v,vl,vetex,vertices = 0;
 
-  // Clear context
-  this.clear();
+
 
   // Build the shader program
 /*  if (this.lights !== lights) {
@@ -1148,7 +1147,6 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
   }*/
 
 
-  var program = this.buildProgram(lights);
 
   positionLocation = gl.getAttribLocation(program, "a_position");
   colorLocation = gl.getAttribLocation(program, "a_color");
@@ -1172,7 +1170,7 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
   setColors(gl);
 
   // Draw scene
-  drawScene();
+  drawScene(callback);
 
   // Update program
   if (!!this.program) {
@@ -1349,7 +1347,7 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
   //this.gl.flush();
 
   //Logger.debug('WebGLRenderer # of vertices @', this.vertices);
-  Logger.debug('WebGLRenderer draw arrays @', getDateTime());
+
   return this;
 };
 
@@ -1432,7 +1430,7 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights) {
   // Enable program
   this.gl.useProgram(this.program);
 
-  Logger.debug('Using program,', this.program);
+  //Logger.debug('Using program,', this.program);
 
   // Return the program
   return program;
@@ -1790,8 +1788,14 @@ function initialise(inputGifFile) {
     Logger.debug('Initializing export gif.');
     initExportGif('render.gif');
 
+    var program = renderer.buildProgram(scene.lights);
+    Logger.debug(program);
+
+
     Logger.debug('Starting rendering process.');
-    processFrame();
+    processFrame(program);
+
+
   });
 }
 
@@ -1917,29 +1921,69 @@ function dhm(t){
 var frameCount = 0;
 var lastFrameRenderTime = new Date().getTime();
 
-function processFrame() {
+/**
+* Main Frame Loop
+*/
+function processFrame(program) {
   frameCount++;
 
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount > 2) {
+  if (frameCount > 10) {
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
+    //initExportGif('render' + frameCount + '.gif');
     return;
   }
 
   Logger.debug('[' + frame + '] Frame render @', getDateTime());
 
+  // Clear context
+  renderer.clear();
 
   createMesh();
 
-  if (frameCount % 2 == 0) {
+  //if (frameCount % 0 == 0) {
     // Calculate and render visualizations
     mesh.update(renderer, scene.lights, true);
     update(impulse);
-    render();
-  }
+    render(program, function() {
+
+      gl.flush();
+      Logger.debug('[' + frame + '] Frame rendering completed @', getDateTime());
+
+
+      Logger.debug('[' + frame + '] Frame export @', getDateTime());
+      // Read pixels from gl buffer
+      var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+      gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+      Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
+      // Write out the image into memory
+      encoder.addFrame(pixels);
+
+      /*finishExportGif();
+      Logger.debug('Initializing export gif.');
+      initExportGif('render' + frameCount + '.gif');*/
+
+      // Apply physics
+      impulse -= impulse * 0.5;
+      if (impulse < 0) {
+        impulse = 0;
+      }
+
+      var delta = currentTime-lastFrameRenderTime;
+      var deltaTime = dhm(delta);
+      Logger.debug('[' + frame + '] Total frame render time:', deltaTime);
+
+      // Store render time for next frame
+      lastFrameRenderTime = currentTime;
+
+      // Continue loop to next frame
+      requestAnimationFrame(processFrame(program));
+    });
+  //}
 
   // Export visualization
   // Store gif frame
@@ -1957,34 +2001,6 @@ function processFrame() {
   }
   */
 
-
-    Logger.debug('translation[0]=' + translation[0] + '@', getDateTime());
-    Logger.debug('translation[1]=' + translation[1] + '@', getDateTime());
-
-  Logger.debug('[' + frame + '] Frame export @', getDateTime());
-  // Read pixels from gl buffer
-  var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
-  gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-  Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
-  // Write out the image into memory
-  encoder.addFrame(pixels);
-
-  // Apply physics
-  impulse -= impulse * 0.5;
-  if (impulse < 0) {
-    impulse = 0;
-  }
-
-  var delta = currentTime-lastFrameRenderTime;
-  var deltaTime = dhm(delta);
-  Logger.debug('[' + frame + '] Total frame render time:', deltaTime);
-
-  // Store render time for next frame
-  lastFrameRenderTime = currentTime;
-
-  // Continue loop to next frame
-  requestAnimationFrame(processFrame);
 }
 
 function finishExportGif() {
@@ -2001,7 +2017,7 @@ function initExportGif(filename) {
 
   encoder.start();
   encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
-  encoder.setDelay(20);  // frame delay in ms
+  encoder.setDelay(60);  // frame delay in ms
   encoder.setQuality(10); // image quality. 10 is default.
 
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
@@ -2054,8 +2070,8 @@ function update(vibFactor) {
   geometry.dirty = true;
 }
 
-function render() {
-  renderer.render(scene);
+function render(program, callback) {
+  renderer.render(scene, program, callback);
 }
 
 function getRandomColor(){
@@ -2231,7 +2247,7 @@ function fillBuffers() {
 var deltaT = 0;
 
   // Draw the scene.
-  function drawScene() {
+  function drawScene(callback) {
 
     // Tell WebGL how to convert from clip space to pixels
     //gl.viewport(0, 0, bufferWidth, bufferHeight);
@@ -2282,11 +2298,18 @@ var deltaT = 0;
     // Compute the matrices
     var matrix = m4.projection(bufferWidth, bufferHeight, 400);
 
-    rotation[0] += degToRad(25);
-    translation[0] += 10.0;
+    rotation[0] += degToRad(10);
+    rotation[1] += degToRad(14);
+    translation[0] += 0.4;
     deltaT = 20;
+    scale[0] += 0.0;
+    scale[1] += 0.0;
+    scale[2] += 0.0;
+    Logger.debug('translation=',translation);
+    Logger.debug('rotation=',rotation);
+    Logger.debug('scale=',scale);
 
-    matrix = m4.translate(matrix, translation[0], translation[1]+deltaT, translation[2]);
+    matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
     matrix = m4.xRotate(matrix, rotation[0]);
     matrix = m4.yRotate(matrix, rotation[1]);
     matrix = m4.zRotate(matrix, rotation[2]);
@@ -2304,7 +2327,17 @@ var deltaT = 0;
     var count = 16 * 6;
     gl.drawArrays(primitiveType, offset, count);
 
-    Logger.debug('translation=',translation);
+    Logger.debug('WebGLRenderer draw arrays @', getDateTime());
+
+    if (callback) {
+      Logger.debug('Rendering callback defined.');
+      // Notify callback of rendering completion
+      callback();
+    }  else {
+      Logger.debug('No rendering callback defined.');
+    }
+
+
 }
 
 var m4 = {

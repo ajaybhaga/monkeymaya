@@ -89,14 +89,6 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var EPSILON = 1.0 / 1048576.0;
   var storedPoints = [];
 
-  var squareVerticesBuffer;
-  var squareVerticesColorBuffer;
-  var mvMatrix;
-  var shaderProgram;
-  var vertexPositionAttribute;
-  var vertexColorAttribute;
-  var perspectiveMatrix;
-
   // look up where the vertex data needs to go.
   var positionLocation;
   var colorLocation;
@@ -1158,13 +1150,12 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
 
   var program = this.buildProgram(lights);
 
-  // look up where the vertex data needs to go.
   positionLocation = gl.getAttribLocation(program, "a_position");
   colorLocation = gl.getAttribLocation(program, "a_color");
 
+  // look up where the vertex data needs to go.
   // lookup uniforms
   matrixLocation = gl.getUniformLocation(program, "u_matrix");
-
 
   // Create a buffer to put positions in
   positionBuffer = gl.createBuffer();
@@ -1180,7 +1171,7 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
   // Put geometry data into buffer
   setColors(gl);
 
-
+  // Draw scene
   drawScene();
 
   // Update program
@@ -1304,10 +1295,6 @@ FSS.WebGLRenderer.prototype.render = function(scene) {
   */
 
   }
-
-
-//  initBuffers();
-//  drawScene();
 
     /*
 
@@ -1447,74 +1434,9 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights) {
 
   Logger.debug('Using program,', this.program);
 
-
-//  gl.useProgram(shaderProgram);
-
-  vertexPositionAttribute = gl.getAttribLocation(this.program, "a_position");
-  gl.enableVertexAttribArray(vertexPositionAttribute);
-
-  vertexColorAttribute = gl.getAttribLocation(this.program, "a_color");
-  gl.enableVertexAttribArray(vertexColorAttribute);
-
-  // lookup uniforms
-  matrixLocation = gl.getUniformLocation(program, "uMatrix");
-
   // Return the program
   return program;
 };
-
-//
-// initBuffers
-//
-// Initialize the buffers we'll need. For this demo, we just have
-// one object -- a simple two-dimensional square.
-//
-function initBuffers() {
-/*
-  // Create a buffer for the square's vertices.
-
-  squareVerticesBuffer = gl.createBuffer();
-
-  // Select the squareVerticesBuffer as the one to apply vertex
-  // operations to from here out.
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesBuffer);
-
-  // Now create an array of vertices for the square. Note that the Z
-  // coordinate is always 0 here.
-
-  var vertices = [
-    1.0,  1.0,  0.0,
-    -1.0, 1.0,  0.0,
-    1.0,  -1.0, 0.0,
-    -1.0, -1.0, 0.0
-  ];
-
-  // Now pass the list of vertices into WebGL to build the shape. We
-  // do this by creating a Float32Array from the JavaScript array,
-  // then use it to fill the current vertex buffer.
-
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
-  // Now set up the colors for the vertices
-
-  var colors = [
-    1.0,  1.0,  1.0,  1.0,    // white
-    1.0,  0.0,  0.0,  1.0,    // red
-    0.0,  1.0,  0.0,  1.0,    // green
-    0.0,  0.0,  1.0,  1.0     // blue
-  ];
-
-  squareVerticesColorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, squareVerticesColorBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-
-*/
-
-
-
-}
-
 
 FSS.WebGLRenderer.prototype.buildShader = function(type, source) {
   if (this.unsupported) return;
@@ -2001,7 +1923,7 @@ function processFrame() {
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount > 10) {
+  if (frameCount > 2) {
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
     return;
@@ -2009,11 +1931,15 @@ function processFrame() {
 
   Logger.debug('[' + frame + '] Frame render @', getDateTime());
 
+
   createMesh();
-  // Calculate and render visualizations
-  mesh.update(renderer, scene.lights, true);
-  update(impulse);
-  render();
+
+  if (frameCount % 2 == 0) {
+    // Calculate and render visualizations
+    mesh.update(renderer, scene.lights, true);
+    update(impulse);
+    render();
+  }
 
   // Export visualization
   // Store gif frame
@@ -2302,11 +2228,13 @@ function fillBuffers() {
 
 }
 
+var deltaT = 0;
+
   // Draw the scene.
   function drawScene() {
 
     // Tell WebGL how to convert from clip space to pixels
-    gl.viewport(0, 0, bufferWidth, bufferHeight);
+    //gl.viewport(0, 0, bufferWidth, bufferHeight);
 
     // Clear the canvas AND the depth buffer.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -2356,8 +2284,9 @@ function fillBuffers() {
 
     rotation[0] += degToRad(25);
     translation[0] += 10.0;
+    deltaT = 20;
 
-    matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
+    matrix = m4.translate(matrix, translation[0], translation[1]+deltaT, translation[2]);
     matrix = m4.xRotate(matrix, rotation[0]);
     matrix = m4.yRotate(matrix, rotation[1]);
     matrix = m4.zRotate(matrix, rotation[2]);

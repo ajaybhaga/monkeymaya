@@ -99,8 +99,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var positionBuffer;
   var colorBuffer;
 
-  var translation = [bufferWidth/2, bufferHeight/2, 0];
-  var rotation = [degToRad(40), degToRad(25), degToRad(325)];
+  var translation = [0, bufferHeight/2, 0];
+  var rotation = [degToRad(0), degToRad(0), degToRad(0)];
   var scale = [1, 1, 1];
 
 
@@ -1081,6 +1081,7 @@ FSS.WebGLRenderer = function(gl) {
 
     this.setSize(bufferWidth, bufferHeight);
     Logger.debug('Setting size', bufferWidth, 'x', bufferHeight);
+    initVertexField(gl,false);
   }
 };
 
@@ -1139,21 +1140,22 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, callback) {
 
 
   // Create a buffer to put positions in
-  positionBuffer = gl.createBuffer();
+  //positionBuffer = gl.createBuffer();
   // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  //gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   // Put geometry data into buffer
-  setGeometry(gl);
+  //setGeometry2(gl);
+  var numVertices = initVertexField(gl,true);
 
   // Create a buffer to put colors in
-  colorBuffer = gl.createBuffer();
+  //colorBuffer = gl.createBuffer();
   // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = colorBuffer)
-  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  //gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
   // Put geometry data into buffer
-  setColors(gl);
+  //setColors(gl);
 
   // Draw scene
-  drawScene(this, callback);
+  drawScene(this, numVertices, callback);
 
   return this;
 };
@@ -2053,7 +2055,7 @@ function fillBuffers() {
 }
 
   // Draw the scene.
-  function drawScene(renderer, callback) {
+  function drawScene(renderer, numVertices, callback) {
 
     var m, mesh, t, tl, triangle, l, light,
         attribute, uniform, buffer, data, location,
@@ -2071,14 +2073,15 @@ function fillBuffers() {
     // Enable the depth buffer
     gl.enable(gl.DEPTH_TEST);
 
-
-
-
     // Turn on the position attribute
     gl.enableVertexAttribArray(positionLocation);
 
+    // Turn on the color attribute
+    gl.enableVertexAttribArray(colorLocation);
+
+
     // Bind the position buffer.
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, verticeBufferObject);
 
     // Tell the position attribute how to get data out of positionBuffer (ARRAY_BUFFER)
     var size = 3;          // 3 components per iteration
@@ -2089,12 +2092,20 @@ function fillBuffers() {
     gl.vertexAttribPointer(
         positionLocation, size, type, normalize, stride, offset)
 
-    // Turn on the color attribute
-    gl.enableVertexAttribArray(colorLocation);
-
     // Bind the color buffer.
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, verticeColorBufferObject);
 
+    // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
+    var size = 4;                 // 3 components per iteration
+    var type = gl.FLOAT;          // the data is 32bit floats
+    var normalize = false;         // normalize the data (convert from 0-255 to 0-1)
+    var stride = 0;               // 0 = move forward size * sizeof(type) each iteration to get the next position
+    var offset = 0;               // start at the beginning of the buffer
+    gl.vertexAttribPointer(
+        colorLocation, size, type, normalize, stride, offset)
+
+
+/*
     // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
     var size = 3;                 // 3 components per iteration
     var type = gl.UNSIGNED_BYTE;  // the data is 8bit unsigned values
@@ -2104,8 +2115,10 @@ function fillBuffers() {
     gl.vertexAttribPointer(
         colorLocation, size, type, normalize, stride, offset)
 
+*/
     // Compute the matrices
-    var matrix = m4.projection(bufferWidth, bufferHeight, 400);
+    var matrix = m4.projection(bufferWidth, bufferHeight, 1000);
+    //mat4.perspective(pMatrix,45*Math.PI/180,gl.viewportWidth / gl.viewportHeight, 0.1, 1000.0);
 
     rotation[0] += degToRad(2);
     rotation[1] += degToRad(1);
@@ -2129,14 +2142,19 @@ function fillBuffers() {
     gl.uniformMatrix4fv(matrixLocation, false, matrix);
 
     // Draw the geometry.
-    var primitiveType = gl.TRIANGLES;
+    //var primitiveType = gl.TRIANGLES;
+    var primitiveType = gl.TRIANGLE_STRIP;
     var offset = 0;
-    var count = 16 * 6;
+    var count = numVertices;
     gl.drawArrays(primitiveType, offset, count);
-    Logger.debug('WebGLRenderer # of vertices @', vertexCount);
+    Logger.debug('WebGLRenderer # of vertices @', numVertices);
     Logger.debug('WebGLRenderer draw arrays @', getDateTime());
 
 
+//   	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  // 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
+
+/*
     // Increment vertex counter
     for (m = scene.meshes.length - 1; m >= 0; m--) {
       mesh = scene.meshes[m];
@@ -2236,7 +2254,7 @@ function fillBuffers() {
   gl.drawArrays(primitiveType, offset, count);
   Logger.debug('WebGLRenderer # of vertices @', vertexCount);
   Logger.debug('WebGLRenderer draw arrays @', getDateTime());
-
+*/
 
   if (callback) {
     Logger.debug('Rendering callback defined.');
@@ -2388,8 +2406,126 @@ var m4 = {
 
 };
 
+var perspective=0;
+var cols=50, rows=50;
+var rotateDegrees=0.1;
+var rotX=1, rotY=1, rotZ=0;
+var gx,  gy;
+var x,  y,  z;
+var gheight;
+var triangleStripArray = new Array();
+var totverticesTS=0;
+var vertixx =  new Float32Array(rows*cols);
+var vertixy = new Float32Array(rows*cols);
+var vertixz = new Float32Array(rows*cols);
+var verticeBufferObject;
+var verticeColorBufferObject;
+
+function initVertexField(gl, reuse) {
+
+
+  gx=25;
+  gy=25;
+	gheight=25;
+
+	var i=0, j=0;
+	var index=0;
+	var totverticesRC=2*cols*(rows-1) ;
+	var totverticesTS=2*cols*(rows-1)+2*(rows-2) ;
+  var numVertices=totverticesTS;
+
+  if (!reuse) {
+
+	var verticeArray =new Float32Array(3*totverticesTS);//42);
+	var verticeColorArray =new Float32Array(4*totverticesTS);
+
+	for( var row =1;row<=rows;row++)
+	for(var col=1;col<= cols;col++)
+	{
+			vertixx[j]=gx*col;
+			vertixy[j]=gy*row;
+      vertixz[j] =getRandomArbitrary(1, 40);
+
+      /*if(zzTop[j]>0) vertixz[j] =0.0;
+			else if(perspective) 	vertixz[j]= -1*zzTop[j];
+			else 	vertixz[j]= -2*zzTop[j];*/
+			j++;
+	}
+
+	j=0;
+	for(i=1;i<=totverticesRC;i+=2)
+	{
+			triangleStripArray[ j ]=(1 +i)/2;  //ODD
+			triangleStripArray[ j +1 ]=(cols*2+i+1)/2;//EVEN
+				if(  triangleStripArray[ j +1 ]%cols==0) //check for end of col
+			{
+				if( triangleStripArray[ j +1 ]!=cols && triangleStripArray[ j +1 ]!=cols*rows )
+				{
+					triangleStripArray[ j +2 ]=triangleStripArray[ j +1 ];
+					triangleStripArray[ j +3 ]=(1 +i+2)/2;
+					j+=2;
+				}
+			}
+			j+=2;
+	}
+	var k=0,n=0;
+	j=0;
+	for(i=0;i<triangleStripArray.length; i++)
+	{
+		index=triangleStripArray[j];
+		j++;
+
+		verticeArray[k++]=vertixx[index-1];
+		verticeArray[k++]=vertixy[index-1];
+		verticeArray[k++]=vertixz[index-1];
+		 if ( vertixz[index-1]  >=gheight )
+		 {
+			verticeColorArray[n++]=0.0;
+		 	verticeColorArray[n++]=0.0;
+			verticeColorArray[n++]=1.0;
+		}
+		else
+		{
+			verticeColorArray[n++]=1.0;
+			verticeColorArray[n++]=0.0;
+			verticeColorArray[n++]=0.0;
+		}
+			verticeColorArray[n++]=1.0;
+	}
+
+ 	verticeBufferObject=gl.createBuffer();
+  verticeColorBufferObject=gl.createBuffer();
+}
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, verticeBufferObject);
+	gl.bufferData(gl.ARRAY_BUFFER, verticeArray, gl.STATIC_DRAW);
+
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, verticeColorBufferObject);
+	gl.bufferData(gl.ARRAY_BUFFER, verticeColorArray, gl.STATIC_DRAW);
+
+  return numVertices;
+}
+
 // Fill the buffer with the values that define a letter 'F'.
 function setGeometry(gl) {
+
+  var f32Arr = initializeGrid(4, 3);
+  gl.bufferData(gl.ARRAY_BUFFER, f32Arr, gl.STATIC_DRAW);
+
+}
+/*
+  for (var i = 0; i < f32Arr.length; i += 3) {
+    f32Arr[i] = 0; // x
+    f32Arr[i+1] = 0; // y
+    f32Arr[i+2] = 0; // z
+  }*/
+
+
+  // Fill the buffer with the values that define a letter 'F'.
+  function setGeometry2(gl) {
+
+
   gl.bufferData(
       gl.ARRAY_BUFFER,
       new Float32Array([
@@ -2525,6 +2661,15 @@ function setGeometry(gl) {
 
 // Fill the buffer with colors for the 'F'.
 function setColors(gl) {
+
+  var int8Arr = initializeColorGrid(4, 3);
+  gl.bufferData(gl.ARRAY_BUFFER, int8Arr, gl.STATIC_DRAW);
+
+}
+
+// Fill the buffer with colors for the 'F'.
+function setColors2(gl) {
+
   gl.bufferData(
       gl.ARRAY_BUFFER,
       new Uint8Array([

@@ -862,11 +862,11 @@ FSS.Plane = function(width, height, howmany) {
 
   for(i = triangles.length; i; ) {
     --i;
-    var v1 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]));
+    var v1 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 10.0);
     --i;
-    var v2 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]));
+    var v2 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 10.0);
     --i;
-    var v3 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]));
+    var v3 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 10.0);
     var t1 = new FSS.Triangle(v1,v2,v3);
     this.triangles.push(t1);
     this.vertices.push(v1);
@@ -921,8 +921,8 @@ FSS.Mesh.prototype.update = function(renderer, lights, calculate) {
 
       // Reset Triangle Color
       FSS.Vector4.set(triangle.color.rgba);
-      triangle.color.rgba = getTriangleColor(triangle.centroid, this.getBBox(), renderer);
-      //triangle.color = new FSS.Color(rgbToHex(getRandomArbitrary(0,255), getRandomArbitrary(0,255), getRandomArbitrary(0,255)), 1);
+//      triangle.color.rgba = getTriangleColor(triangle.centroid, this.getBBox(), renderer);
+      triangle.color.rgba = new FSS.Color(rgbToHex(getRandomArbitrary(0,255), getRandomArbitrary(0,255), getRandomArbitrary(0,255)), 1);
       //Logger.debug('triangle.color = ', triangle.color);
 
       // Iterate through Lights
@@ -1130,14 +1130,14 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, callback) {
 
   if (this.unsupported) return;
 
-  //positionLocation = gl.getAttribLocation(program, "a_position");
-  //colorLocation = gl.getAttribLocation(program, "a_color");
+  positionLocation = gl.getAttribLocation(program, "a_position");
+  colorLocation = gl.getAttribLocation(program, "a_color");
 
   // look up where the vertex data needs to go.
   // lookup uniforms
   matrixLocation = gl.getUniformLocation(program, "u_matrix");
 
-/*
+
   // Create a buffer to put positions in
   positionBuffer = gl.createBuffer();
   // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
@@ -1150,7 +1150,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, callback) {
   // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = colorBuffer)
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
   // Put geometry data into buffer
-  setColors(gl);*/
+  setColors(gl);
 
   // Draw scene
   drawScene(this, callback);
@@ -1305,8 +1305,8 @@ FSS.WebGLRenderer.VS = function(lights) {
   'attribute vec4 aAmbient;',
   'attribute vec4 aDiffuse;',
 
-  //'attribute vec4 a_position;',
-  //'attribute vec4 a_color;',
+  'attribute vec4 a_position;',
+  'attribute vec4 a_color;',
 
 
   // Uniforms
@@ -1324,16 +1324,17 @@ FSS.WebGLRenderer.VS = function(lights) {
   'void main() {',
 
     // Set color
-    'v_color = vec4(0.0,1.0,1.0,1.0);',
+    //'v_color = vec4(0.0,1.0,1.0,1.0);',
 //    'vColor = aVertexColor;',
 //    'gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);',
 
 
     // Divide x and y by z.
-    'gl_Position = u_matrix * aPosition;',
+    //'gl_Position = u_matrix * aPosition;',
+    'gl_Position = u_matrix * a_position;',
 
     // Pass the color to the fragment shader.
-    //'v_color = a_color;',
+    'v_color = a_color;',
     // Calculate the vertex position
   //  'vec3 position = aPosition / uResolution;',//' * 2.0;',
   //  'vec3 position = aPosition / 1000.0;',
@@ -1737,7 +1738,7 @@ function processFrame(program) {
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount > 10) {
+  if (frameCount > 5) {
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
     //initExportGif('render' + frameCount + '.gif');
@@ -2072,7 +2073,7 @@ function fillBuffers() {
 
 
 
-/*
+
     // Turn on the position attribute
     gl.enableVertexAttribArray(positionLocation);
 
@@ -2102,19 +2103,18 @@ function fillBuffers() {
     var offset = 0;               // start at the beginning of the buffer
     gl.vertexAttribPointer(
         colorLocation, size, type, normalize, stride, offset)
-        */
-
 
     // Compute the matrices
     var matrix = m4.projection(bufferWidth, bufferHeight, 400);
 
-//    rotation[0] += degToRad(10);
-//    rotation[1] += degToRad(14);
-    translation[0] += 0.4;
-
-    scale[0] += 0.0;
-    scale[1] += 0.0;
-    scale[2] += 0.0;
+    rotation[0] += degToRad(2);
+    rotation[1] += degToRad(1);
+    rotation[2] += degToRad(0);
+    translation[0] += 0.1;
+    translation[2] -= 0.4;
+    scale[0] -= 0.01;
+    scale[1] -= 0.01;
+    scale[2] -= 0.01;
     Logger.debug('translation=',translation);
     Logger.debug('rotation=',rotation);
     Logger.debug('scale=',scale);
@@ -2128,6 +2128,14 @@ function fillBuffers() {
     // Set the matrix.
     gl.uniformMatrix4fv(matrixLocation, false, matrix);
 
+    // Draw the geometry.
+    var primitiveType = gl.TRIANGLES;
+    var offset = 0;
+    var count = 16 * 6;
+    gl.drawArrays(primitiveType, offset, count);
+    Logger.debug('WebGLRenderer # of vertices @', vertexCount);
+    Logger.debug('WebGLRenderer draw arrays @', getDateTime());
+
 
     // Increment vertex counter
     for (m = scene.meshes.length - 1; m >= 0; m--) {
@@ -2136,8 +2144,6 @@ function fillBuffers() {
       mesh.update(this, scene.lights, false);
       vertexCount += mesh.geometry.triangles.length*3;
     }
-
-    Logger.debug('renderer=',renderer);
 
     // Build buffers
     for (attribute in renderer.program.attributes) {
@@ -2224,13 +2230,13 @@ function fillBuffers() {
   }
 
   // Draw the geometry.
-  var primitiveType = gl.TRIANGLES;
-  var offset = 0;
-  var count = vertexCount;//16 * 6;
+  primitiveType = gl.TRIANGLES;
+  offset = 0;
+  count = vertexCount;//16 * 6;
   gl.drawArrays(primitiveType, offset, count);
   Logger.debug('WebGLRenderer # of vertices @', vertexCount);
-
   Logger.debug('WebGLRenderer draw arrays @', getDateTime());
+
 
   if (callback) {
     Logger.debug('Rendering callback defined.');

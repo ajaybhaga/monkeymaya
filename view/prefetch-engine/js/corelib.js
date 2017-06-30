@@ -90,16 +90,16 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var storedPoints = [];
 
   // look up where the vertex data needs to go.
-  //var positionLocation;
+  var positionLocation;
   //var colorLocation;
 
   // lookup uniforms
   var matrixLocation;
 
-  //var positionBuffer;
+  var positionBuffer;
   //var colorBuffer;
 
-  var translation = [0, 16, 0];
+  var translation = [0, 0, 0];
   var rotation = [degToRad(0), degToRad(0), degToRad(0)];
   var scale = [1, 1, 1];
 
@@ -798,10 +798,8 @@ FSS.Plane = function(width, height, howmany) {
   var offsetY = this.height * 0.5;
 
   for(i = vertices.length; i--; ) {
-    //x =  offsetX + Math.random()*width;
-    //y =  offsetY - Math.random()*height;
-    x =  Math.random()*width;
-    y =  Math.random()*height;
+    x =  offsetX + Math.random()*width;
+    y =  offsetY - Math.random()*height;
     vertices[i] = [x, y];
   }
 
@@ -863,11 +861,11 @@ FSS.Plane = function(width, height, howmany) {
 
   for(i = triangles.length; i; ) {
     --i;
-    var v1 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 2.0);
+    var v1 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 20.0);
     --i;
-    var v2 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 2.0);
+    var v2 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 20.0);
     --i;
-    var v3 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 2.0);
+    var v3 = new FSS.Vertex(Math.ceil(vertices[triangles[i]][0]), Math.ceil(vertices[triangles[i]][1]), 20.0);
     var t1 = new FSS.Triangle(v1,v2,v3);
     //Logger.debug('triangle=',v1,v2,v3);
     this.triangles.push(t1);
@@ -1135,21 +1133,17 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, callback) {
 
   if (this.unsupported) return;
 
-  //positionLocation = gl.getAttribLocation(program, "a_position");
+  positionLocation = gl.getAttribLocation(program, "aPosition");
   //colorLocation = gl.getAttribLocation(program, "a_color");
 
   // look up where the vertex data needs to go.
   // lookup uniforms
   matrixLocation = gl.getUniformLocation(program, "uMatrix");
 
+  //Logger.debug('matrixLocation=', matrixLocation);
 
-  // Create a buffer to put positions in
-  //positionBuffer = gl.createBuffer();
-  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-  //gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  // Put geometry data into buffer
-  //setGeometry2(gl);
-  //var numVertices = initVertexField(gl,true);
+
+
 
   // Create a buffer to put colors in
   //colorBuffer = gl.createBuffer();
@@ -1223,20 +1217,20 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights) {
 
   // Add the program attributes
   program.attributes = {
-    side:     this.buildBuffer(program, 'attribute', 'aSide',     1, 'f' ),
+    //side:     this.buildBuffer(program, 'attribute', 'aSide',     1, 'f' ),
     position: this.buildBuffer(program, 'attribute', 'aPosition', 3, 'v3'),
-    centroid: this.buildBuffer(program, 'attribute', 'aCentroid', 3, 'v3'),
-    normal:   this.buildBuffer(program, 'attribute', 'aNormal',   3, 'v3'),
-    ambient:  this.buildBuffer(program, 'attribute', 'aAmbient',  4, 'v4'),
-    diffuse:  this.buildBuffer(program, 'attribute', 'aDiffuse',  4, 'v4')
+    //centroid: this.buildBuffer(program, 'attribute', 'aCentroid', 3, 'v3'),
+    //normal:   this.buildBuffer(program, 'attribute', 'aNormal',   3, 'v3'),
+    //ambient:  this.buildBuffer(program, 'attribute', 'aAmbient',  4, 'v4'),
+    //diffuse:  this.buildBuffer(program, 'attribute', 'aDiffuse',  4, 'v4')
   };
 
   // Add the program uniforms
   program.uniforms = {
 //    resolution:    this.buildBuffer(program, 'uniform', 'uResolution',    3, '3f',  1     ),
-    lightPosition: this.buildBuffer(program, 'uniform', 'uLightPosition', 3, '3fv', lights),
-    lightAmbient:  this.buildBuffer(program, 'uniform', 'uLightAmbient',  4, '4fv', lights),
-    lightDiffuse:  this.buildBuffer(program, 'uniform', 'uLightDiffuse',  4, '4fv', lights),
+    //lightPosition: this.buildBuffer(program, 'uniform', 'uLightPosition', 3, '3fv', lights),
+    //lightAmbient:  this.buildBuffer(program, 'uniform', 'uLightAmbient',  4, '4fv', lights),
+    //lightDiffuse:  this.buildBuffer(program, 'uniform', 'uLightDiffuse',  4, '4fv', lights),
     //matrix:        this.buildBuffer(program, 'uniform', 'uMatrix',  16, '4m')
   };
 
@@ -1276,6 +1270,8 @@ FSS.WebGLRenderer.prototype.buildShader = function(type, source) {
 FSS.WebGLRenderer.prototype.buildBuffer = function(program, type, identifier, size, structure, count) {
   var buffer = {buffer:this.gl.createBuffer(), size:size, structure:structure, identifier:identifier, data:null};
 
+  Logger.debug('Built buffer for ', identifier);
+
   // Set the location
   switch (type) {
     case 'attribute':
@@ -1285,6 +1281,9 @@ FSS.WebGLRenderer.prototype.buildBuffer = function(program, type, identifier, si
       buffer.location = this.gl.getUniformLocation(program, identifier);
       break;
   }
+
+  Logger.debug('buffer.location ', buffer.location);
+
 
   // Create the buffer if count is provided
   if (!!count) {
@@ -1303,26 +1302,26 @@ FSS.WebGLRenderer.VS = function(lights) {
   'precision mediump float;',
 
   // Lights
-  '#define LIGHTS ' + lights,
+//  '#define LIGHTS ' + lights,
 
   // Attributes
-  'attribute float aSide;',
+//  'attribute float aSide;',
   'attribute vec4 aPosition;',
-  'attribute vec3 aCentroid;',
-  'attribute vec3 aNormal;',
-  'attribute vec4 aAmbient;',
-  'attribute vec4 aDiffuse;',
+//  'attribute vec3 aCentroid;',
+//  'attribute vec3 aNormal;',
+//  'attribute vec4 aAmbient;',
+//  'attribute vec4 aDiffuse;',
 
   //'attribute vec4 a_position;',
   'attribute vec4 a_color;',
 
-
+/*
   // Uniforms
   'uniform vec3 uResolution;',
   'uniform vec3 uLightPosition[LIGHTS];',
   'uniform vec4 uLightAmbient[LIGHTS];',
   'uniform vec4 uLightDiffuse[LIGHTS];',
-
+*/
   'uniform mat4 uMatrix;',
 
   // Varyings
@@ -1503,9 +1502,9 @@ var impulse = 0.0;
 // Mesh Properties
 //------------------------------
 var MESH = {
-  width: 100,
-  height: 100,
-  slices: 40,
+  width: 200,
+  height: 200,
+  slices: 200,
   depth: 0,
   maxdepth: 40,
   ambient: '#FFFFFF',
@@ -1747,7 +1746,7 @@ function processFrame(program) {
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount > 5) {
+  if (frameCount > 30) {
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
     //initExportGif('render' + frameCount + '.gif');
@@ -2071,7 +2070,7 @@ function fillBuffers() {
 
 
     // Clear the canvas AND the depth buffer.
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // Turn on culling. By default backfacing triangles
     // will be culled.
@@ -2083,7 +2082,18 @@ function fillBuffers() {
     // Compute the matrices
     var matrix = m4.projection(bufferWidth, bufferHeight, 400);
 
-  Logger.debug('gl errors=',gl.getError());
+    Logger.debug('start draw scene gl errors=',gl.getError());
+
+
+    // Create a buffer to put positions in
+    positionBuffer = gl.createBuffer();
+    // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    // Put geometry data into buffer
+    //setGeometry(gl);
+    var numVertices = initVertexField(gl,false);
+
+
     // Turn on the position attribute
     //gl.enableVertexAttribArray(program.attributes.position.buffer);
 
@@ -2092,9 +2102,9 @@ function fillBuffers() {
     //gl.enableVertexAttribArray(program.attributes.position.buffer);
 
 
-/*
+
     // Bind the position buffer.
-    gl.bindBuffer(gl.ARRAY_BUFFER, renderer.program.attributes.position.buffer);
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
     // Tell the position attribute how to get data out of positionBuffer (ARRAY_BUFFER)
     var size = 3;          // 3 components per iteration
@@ -2102,8 +2112,7 @@ function fillBuffers() {
     var normalize = false; // don't normalize the data
     var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
     var offset = 0;        // start at the beginning of the buffer
-    gl.vertexAttribPointer(
-        renderer.program.attributes.position.location, size, type, normalize, stride, offset)*/
+    gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
 
 /*
     // Bind the color buffer.
@@ -2133,8 +2142,11 @@ function fillBuffers() {
 
 
 //   	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  // 	gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
+    // 16 faces = 16 x 2 triangles = 32
+//    gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
+gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
 
+    //   	gl.drawArrays(gl.TRIANGLES, 0, 16*6);
 
     // Increment vertex counter
     for (m = scene.meshes.length - 1; m >= 0; m--) {
@@ -2166,7 +2178,7 @@ function fillBuffers() {
 
             switch (attribute) {
               case 'side':
-                renderer.setBufferData(index, buffer, mesh.side);
+                //renderer.setBufferData(index, buffer, mesh.side);
                 //Logger.debug('mesh side=', mesh.side);
                 break;
               case 'position':
@@ -2174,18 +2186,18 @@ function fillBuffers() {
                 //Logger.debug('vertex position=', vertex.position);
                 break;
               case 'centroid':
-                renderer.setBufferData(index, buffer, triangle.centroid);
+                //renderer.setBufferData(index, buffer, triangle.centroid);
                 break;
               case 'normal':
-                renderer.setBufferData(index, buffer, triangle.normal);
+                //renderer.setBufferData(index, buffer, triangle.normal);
                 break;
               case 'ambient':
                 //this.setBufferData(index, buffer, mesh.material.ambient.rgba);
-                renderer.setBufferData(index, buffer, triangle.color.rgba);
+                //renderer.setBufferData(index, buffer, triangle.color.rgba);
                 break;
               case 'diffuse':
                 //this.setBufferData(index, buffer, mesh.material.diffuse.rgba);
-                renderer.setBufferData(index, buffer, triangle.color.rgba);
+                //renderer.setBufferData(index, buffer, triangle.color.rgba);
                 //Logger.debug('triangle.color.rgba=', triangle.color.rgba);
                 break;
             index++;
@@ -2193,13 +2205,17 @@ function fillBuffers() {
         }
       }
 
-  Logger.debug('gl errors=',gl.getError());
       // Upload attribute buffer data
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buffer);
+      Logger.debug('bindBuffer gl errors=',gl.getError());
       gl.bufferData(gl.ARRAY_BUFFER, buffer.data, gl.DYNAMIC_DRAW);
+      Logger.debug('bufferData gl errors=',gl.getError());
+
 
       gl.enableVertexAttribArray(buffer.location);
+      Logger.debug('enableVertexAttribArray gl errors=',gl.getError());
       gl.vertexAttribPointer(buffer.location, buffer.size, gl.FLOAT, false, 0, 0);
+      Logger.debug('vertexAttribPointer gl errors=',gl.getError());
     }
   }
 
@@ -2237,15 +2253,15 @@ function fillBuffers() {
     }
   }
 
-  rotation[0] += degToRad(5);
-  rotation[1] += degToRad(4);
-  rotation[2] += degToRad(2);
+  rotation[0] += degToRad(0);
+  rotation[1] += degToRad(0);
+  rotation[2] += degToRad(0);
   translation[0] += 0.0;
-  translation[0] -= 0.2;
-  translation[2] -= 0.4;
-  scale[0] = 1;
-  scale[1] = 1;
-  scale[2] = 1;
+  translation[0] -= 0.0;
+  translation[2] += 0.0;
+  scale[0] /= 1.00;
+  scale[1] /= 1.00;
+  scale[2] /= 1.00;
   Logger.debug('translation=',translation);
   Logger.debug('rotation=',rotation);
   Logger.debug('scale=',scale);
@@ -2257,9 +2273,10 @@ function fillBuffers() {
   matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
 
   // Set the matrix.
-  //gl.uniformMatrix4fv(matrixLocation, false, matrix);
+  gl.uniformMatrix4fv(matrixLocation, false, matrix);
+  Logger.debug('matrix=', matrix);
 
-  Logger.debug('gl errors=',gl.getError());
+
   Logger.debug('gl errors=',gl.getError());
 
 
@@ -2270,6 +2287,7 @@ function fillBuffers() {
   gl.drawArrays(primitiveType, offset, count);
   Logger.debug('WebGLRenderer # of vertices @', vertexCount);
   Logger.debug('WebGLRenderer draw arrays @', getDateTime());
+  Logger.debug('gl errors=',gl.getError());
 
 
 /*
@@ -2462,6 +2480,102 @@ function initVertexField(gl, reuse) {
 
   if (!reuse) {
 
+	var verticesArray =new Float32Array(3*totverticesTS);//42);
+//	var verticeColorArray =new Float32Array(4*totverticesTS);
+
+	for( var row =1;row<=rows;row++)
+	for(var col=1;col<= cols;col++)
+	{
+//			vertixx[j]=gx*col;
+//			vertixy[j]=gy*row;
+      vertixx[j]=(gx*col)+getRandomArbitrary(1, 5);
+			vertixy[j]=(gy*row)+getRandomArbitrary(1, 5);
+
+      vertixz[j] =getRandomArbitrary(1, 40);
+
+      /*if(zzTop[j]>0) vertixz[j] =0.0;
+			else if(perspective) 	vertixz[j]= -1*zzTop[j];
+			else 	vertixz[j]= -2*zzTop[j];*/
+			j++;
+	}
+
+	j=0;
+	for(i=1;i<=totverticesRC;i+=2)
+	{
+			triangleStripArray[ j ]=(1 +i)/2;  //ODD
+			triangleStripArray[ j +1 ]=(cols*2+i+1)/2;//EVEN
+				if(  triangleStripArray[ j +1 ]%cols==0) //check for end of col
+			{
+				if( triangleStripArray[ j +1 ]!=cols && triangleStripArray[ j +1 ]!=cols*rows )
+				{
+					triangleStripArray[ j +2 ]=triangleStripArray[ j +1 ];
+					triangleStripArray[ j +3 ]=(1 +i+2)/2;
+					j+=2;
+				}
+			}
+			j+=2;
+	}
+
+
+	var k=0,n=0;
+	j=0;
+	for(i=0;i<triangleStripArray.length; i++)
+	{
+		index=triangleStripArray[j];
+		j++;
+
+		verticesArray[k++]=vertixx[index-1];
+		verticesArray[k++]=vertixy[index-1];
+		verticesArray[k++]=vertixz[index-1];
+		 if ( vertixz[index-1]  >=gheight )
+		 {
+	//		verticeColorArray[n++]=0.0;
+//		 	verticeColorArray[n++]=0.0;
+	//		verticeColorArray[n++]=1.0;
+		}
+		else
+		{
+	//		verticeColorArray[n++]=1.0;
+//			verticeColorArray[n++]=0.0;
+//			verticeColorArray[n++]=0.0;
+		}
+//			verticeColorArray[n++]=1.0;
+	}
+
+ 	//verticeBufferObject=gl.createBuffer();
+  //verticeColorBufferObject=gl.createBuffer();
+}
+
+	//gl.bindBuffer(gl.ARRAY_BUFFER, verticeBufferObject);
+	//gl.bufferData(gl.ARRAY_BUFFER, verticesArray, gl.STATIC_DRAW);
+
+  gl.bufferData(gl.ARRAY_BUFFER, verticesArray, gl.STATIC_DRAW);
+
+
+//  return verticesArray;
+
+//	gl.bindBuffer(gl.ARRAY_BUFFER, verticeColorBufferObject);
+//	gl.bufferData(gl.ARRAY_BUFFER, verticeColorArray, gl.STATIC_DRAW);
+
+  return numVertices;
+}
+
+
+function initVertexField2(gl, reuse) {
+
+
+  gx=25;
+  gy=25;
+	gheight=25;
+
+	var i=0, j=0;
+	var index=0;
+	var totverticesRC=2*cols*(rows-1) ;
+	var totverticesTS=2*cols*(rows-1)+2*(rows-2) ;
+  var numVertices=totverticesTS;
+
+  if (!reuse) {
+
 	var verticeArray =new Float32Array(3*totverticesTS);//42);
 	var verticeColorArray =new Float32Array(4*totverticesTS);
 
@@ -2532,6 +2646,7 @@ function initVertexField(gl, reuse) {
 
   return numVertices;
 }
+
 
 // Fill the buffer with the values that define a letter 'F'.
 function setGeometry(gl) {

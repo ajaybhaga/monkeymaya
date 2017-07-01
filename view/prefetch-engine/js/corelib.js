@@ -91,13 +91,10 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 
   // look up where the vertex data needs to go.
   var positionLocation;
-  //var colorLocation;
+  var colorLocation;
 
   // lookup uniforms
   var matrixLocation;
-
-  var positionBuffer;
-  //var colorBuffer;
 
   var translation = [0, 0, 0];
   var rotation = [degToRad(0), degToRad(0), degToRad(0)];
@@ -1134,7 +1131,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, callback) {
   if (this.unsupported) return;
 
   positionLocation = gl.getAttribLocation(program, "aPosition");
-  //colorLocation = gl.getAttribLocation(program, "a_color");
+  colorLocation = gl.getAttribLocation(program, "aColor");
 
   // look up where the vertex data needs to go.
   // lookup uniforms
@@ -1313,7 +1310,7 @@ FSS.WebGLRenderer.VS = function(lights) {
 //  'attribute vec4 aDiffuse;',
 
   //'attribute vec4 a_position;',
-  'attribute vec4 a_color;',
+  'attribute vec4 aColor;',
 
 /*
   // Uniforms
@@ -1331,7 +1328,7 @@ FSS.WebGLRenderer.VS = function(lights) {
   'void main() {',
 
     // Set color
-    'v_color = vec4(0.0,1.0,1.0,1.0);',
+    'v_color = vec4(1.0,0.0,0.0,1.0);',
 //    'vColor = aVertexColor;',
 //    'gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);',
 
@@ -1341,7 +1338,7 @@ FSS.WebGLRenderer.VS = function(lights) {
     //'gl_Position = u_matrix * a_position;',
 
     // Pass the color to the fragment shader.
-    //'v_color = a_color;',
+    'v_color = aColor;',
     // Calculate the vertex position
   //  'vec3 position = aPosition / uResolution;',//' * 2.0;',
   //  'vec3 position = aPosition / 1000.0;',
@@ -1746,7 +1743,7 @@ function processFrame(program) {
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount > 30) {
+  if (frameCount > 5) {
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
     //initExportGif('render' + frameCount + '.gif');
@@ -1766,7 +1763,7 @@ function processFrame(program) {
     update(impulse);
     render(program, function() {
 
-      gl.flush();
+      //gl.flush();
       Logger.debug('[' + frame + '] Frame rendering completed @', getDateTime());
 
 
@@ -1833,7 +1830,7 @@ function initExportGif(filename) {
 
   encoder.start();
   encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
-  encoder.setDelay(60);  // frame delay in ms
+  encoder.setDelay(120);  // frame delay in ms
   encoder.setQuality(10); // image quality. 10 is default.
 
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
@@ -2060,6 +2057,10 @@ function fillBuffers() {
 
 }
 
+var positionBuffer;
+var colorBuffer;
+
+
   // Draw the scene.
   function drawScene(renderer, callback) {
 
@@ -2084,27 +2085,26 @@ function fillBuffers() {
 
     Logger.debug('start draw scene gl errors=',gl.getError());
 
-
     // Create a buffer to put positions in
     positionBuffer = gl.createBuffer();
-    // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    // Create a buffer to put colors in
+    colorBuffer = gl.createBuffer();
+
     // Put geometry data into buffer
     //setGeometry(gl);
-    var numVertices = initVertexField(gl,false);
-
+    var numVertices = initVertexField(gl, positionBuffer, colorBuffer);
 
     // Turn on the position attribute
     //gl.enableVertexAttribArray(program.attributes.position.buffer);
+    gl.enableVertexAttribArray(positionLocation);
 
     // Turn on the color attribute
-    //gl.enableVertexAttribArray(colorLocation);
+    gl.enableVertexAttribArray(colorLocation);
     //gl.enableVertexAttribArray(program.attributes.position.buffer);
-
-
 
     // Bind the position buffer.
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+Logger.debug('bindBuffer gl errors=',gl.getError());
 
     // Tell the position attribute how to get data out of positionBuffer (ARRAY_BUFFER)
     var size = 3;          // 3 components per iteration
@@ -2113,20 +2113,25 @@ function fillBuffers() {
     var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
     var offset = 0;        // start at the beginning of the buffer
     gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
+Logger.debug('vertexAttribPointer gl errors=',gl.getError());
 
-/*
     // Bind the color buffer.
-    gl.bindBuffer(gl.ARRAY_BUFFER, verticeColorBufferObject);
-
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+Logger.debug('bindBuffer gl errors=',gl.getError());
     // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
     var size = 4;                 // 3 components per iteration
-    var type = gl.FLOAT;          // the data is 32bit floats
-    var normalize = false;         // normalize the data (convert from 0-255 to 0-1)
+    var type = gl.UNSIGNED_BYTE;          // the data is unsigned byte
+    var normalize = true;         // normalize the data (convert from 0-255 to 0-1)
     var stride = 0;               // 0 = move forward size * sizeof(type) each iteration to get the next position
     var offset = 0;               // start at the beginning of the buffer
     gl.vertexAttribPointer(
         colorLocation, size, type, normalize, stride, offset)
-*/
+        Logger.debug('vertexAttribPointer gl errors=',gl.getError());
+
+//    glvertexAttribPointer(attribute, 4, gl.UNSIGNED_BYTE, false, 32, 12);
+
+
+
 
 /*
     // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
@@ -2144,10 +2149,10 @@ function fillBuffers() {
 //   	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // 16 faces = 16 x 2 triangles = 32
 //    gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
-gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
+gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
 
     //   	gl.drawArrays(gl.TRIANGLES, 0, 16*6);
-
+/*
     // Increment vertex counter
     for (m = scene.meshes.length - 1; m >= 0; m--) {
       mesh = scene.meshes[m];
@@ -2182,7 +2187,7 @@ gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
                 //Logger.debug('mesh side=', mesh.side);
                 break;
               case 'position':
-                renderer.setBufferData(index, buffer, vertex.position);
+            //    renderer.setBufferData(index, buffer, vertex.position);
                 //Logger.debug('vertex position=', vertex.position);
                 break;
               case 'centroid':
@@ -2234,7 +2239,7 @@ gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
   //renderer.program.uniforms.matrix.buffer.data = new FSS.Array(renderer.program.uniforms.matrix.buffer.size);
   //renderer.setBufferData(1, renderer.program.uniforms.matrix, matrix);
 
-
+/*
   // Update uniforms
   for (uniform in renderer.program.uniforms) {
     buffer = renderer.program.uniforms[uniform];
@@ -2251,7 +2256,7 @@ gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
         gl.uniform4fv(location, data);
         break;
     }
-  }
+  }*/
 
   rotation[0] += degToRad(0);
   rotation[1] += degToRad(0);
@@ -2453,20 +2458,19 @@ var m4 = {
 
 };
 
-var perspective=0;
-var cols=50, rows=50;
-var gx,  gy;
-var gheight;
-var triangleStripArray = new Array();
-var totverticesTS=0;
-var vertixx =  new Float32Array(rows*cols);
-var vertixy = new Float32Array(rows*cols);
-var vertixz = new Float32Array(rows*cols);
-var verticeBufferObject;
-var verticeColorBufferObject;
+function initVertexField(gl, positionBuffer, colorBuffer) {
+  var perspective=0;
+  var gheight;
+  var totverticesTS=0;
 
-function initVertexField(gl, reuse) {
+  var cols=50, rows=50;
+  var gx,  gy;
 
+  var triangleStripArray = new Array();
+
+  var vertixx =  new Float32Array(rows*cols);
+  var vertixy = new Float32Array(rows*cols);
+  var vertixz = new Float32Array(rows*cols);
 
   gx=25;
   gy=25;
@@ -2478,8 +2482,6 @@ function initVertexField(gl, reuse) {
 	var totverticesTS=2*cols*(rows-1)+2*(rows-2) ;
   var numVertices=totverticesTS;
 
-  if (!reuse) {
-
 	var verticesArray =new Float32Array(3*totverticesTS);//42);
 //	var verticeColorArray =new Float32Array(4*totverticesTS);
 
@@ -2490,8 +2492,7 @@ function initVertexField(gl, reuse) {
 //			vertixy[j]=gy*row;
       vertixx[j]=(gx*col)+getRandomArbitrary(1, 5);
 			vertixy[j]=(gy*row)+getRandomArbitrary(1, 5);
-
-      vertixz[j] =getRandomArbitrary(1, 40);
+      vertixz[j] =getRandomArbitrary(1, 255);
 
       /*if(zzTop[j]>0) vertixz[j] =0.0;
 			else if(perspective) 	vertixz[j]= -1*zzTop[j];
@@ -2527,30 +2528,18 @@ function initVertexField(gl, reuse) {
 		verticesArray[k++]=vertixx[index-1];
 		verticesArray[k++]=vertixy[index-1];
 		verticesArray[k++]=vertixz[index-1];
-		 if ( vertixz[index-1]  >=gheight )
-		 {
-	//		verticeColorArray[n++]=0.0;
-//		 	verticeColorArray[n++]=0.0;
-	//		verticeColorArray[n++]=1.0;
-		}
-		else
-		{
-	//		verticeColorArray[n++]=1.0;
-//			verticeColorArray[n++]=0.0;
-//			verticeColorArray[n++]=0.0;
-		}
-//			verticeColorArray[n++]=1.0;
-	}
-
- 	//verticeBufferObject=gl.createBuffer();
-  //verticeColorBufferObject=gl.createBuffer();
-}
+  }
 
 	//gl.bindBuffer(gl.ARRAY_BUFFER, verticeBufferObject);
 	//gl.bufferData(gl.ARRAY_BUFFER, verticesArray, gl.STATIC_DRAW);
 
+  // Bind it to ARRAY_BUFFER (think of it as ARRAY_BUFFER = positionBuffer)
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, verticesArray, gl.STATIC_DRAW);
 
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  // Build color field based on vertices and load buffer data
+  initColorField(gl, rows, cols, triangleStripArray, vertixx, vertixy, vertixz, verticesArray);
 
 //  return verticesArray;
 
@@ -2561,8 +2550,75 @@ function initVertexField(gl, reuse) {
 }
 
 
-function initVertexField2(gl, reuse) {
+function scaleBetween(unscaledNum, minAllowed, maxAllowed, min, max) {
+  return (maxAllowed - minAllowed) * (unscaledNum - min) / (max - min) + minAllowed;
+}
 
+
+Float32Array.prototype.scaleBetween = function(scaledMin, scaledMax) {
+  var max = Math.max.apply(Math, this);
+  var min = Math.min.apply(Math, this);
+  return this.map(num => (scaledMax-scaledMin)*(num-min)/(max-min)+scaledMin);
+}
+
+
+
+function initColorField(gl, rows, cols, triangleStripArray, vertixx, vertixy, vertixz, verticesArray) {
+
+
+
+	var i=0, j=0;
+	var index=0;
+	var totverticesRC=2*cols*(rows-1) ;
+	var totverticesTS=2*cols*(rows-1)+2*(rows-2) ;
+  var numVertices=totverticesTS;
+
+	var verticeColorArray = new Float32Array(4*totverticesTS);
+
+
+  var zh = vertixz.scaleBetween(0, 255);
+  Logger.debug('zh=',zh);
+
+	var k=0,n=0;
+	j=0;
+	for(i=0;i<triangleStripArray.length; i++)
+	{
+		index=triangleStripArray[j];
+		j++;
+
+		verticeColorArray[n]=zh[index-1];
+		verticeColorArray[n+1]=zh[index-1];
+		verticeColorArray[n+2]=zh[index-1];
+		verticeColorArray[n+3]=255;
+
+    n += 4;
+	}
+
+
+  gl.bufferData(gl.ARRAY_BUFFER, verticeColorArray, gl.STATIC_DRAW);
+
+  Logger.debug('Generated color field.');
+
+  return numVertices;
+}
+
+
+function initVertexField2(gl, reuse) {
+  var perspective=0;
+  var gheight;
+  var totverticesTS=0;
+
+  var cols=50, rows=50;
+  var gx,  gy;
+
+  var triangleStripArray = new Array();
+
+  var vertixx =  new Float32Array(rows*cols);
+  var vertixy = new Float32Array(rows*cols);
+  var vertixz = new Float32Array(rows*cols);
+
+  var verticeBufferObject;
+  var verticeColorBufferObject;
 
   gx=25;
   gy=25;

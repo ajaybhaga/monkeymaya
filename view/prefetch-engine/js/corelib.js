@@ -35,6 +35,23 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var bufferWidth = 1280;
   var bufferHeight = 1024;
 
+  var frameCount = 0;
+  var frameLimit = 5;
+  var lastFrameRenderTime = new Date().getTime();
+  var skipFirst = 0; // Skips rendering of first black frame (defect)
+
+  // Field accumulators
+  var ax = 0;
+  var ay = 0;
+  var az = 0;
+
+  // Energy
+  var ex = 0;
+  var ey = 0;
+  var ez = 0;
+
+  var impulseLevel = 2;
+
   var gifData = {
     frames: [],
     width: 0,
@@ -1328,7 +1345,7 @@ FSS.WebGLRenderer.VS = function(lights) {
   'void main() {',
 
     // Set color
-    'v_color = vec4(1.0,0.0,0.0,1.0);',
+//    'v_color = vec4(1.0,0.0,0.0,1.0);',
 //    'vColor = aVertexColor;',
 //    'gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);',
 
@@ -1731,9 +1748,6 @@ function dhm(t){
    return [d, h.substr(-2), m.substr(-2)].join(':');
 }
 
-var frameCount = 0;
-var lastFrameRenderTime = new Date().getTime();
-
 /**
 * Main Frame Loop
 */
@@ -1743,7 +1757,7 @@ function processFrame(program) {
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount > 5) {
+  if (frameCount > frameLimit) {
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
     //initExportGif('render' + frameCount + '.gif');
@@ -1766,15 +1780,21 @@ function processFrame(program) {
       //gl.flush();
       Logger.debug('[' + frame + '] Frame rendering completed @', getDateTime());
 
+      // First frame renders black (defect: uncertain why)
+      if (skipFirst == 0) {
+        skipFirst = 1;
+      } else {
 
-      Logger.debug('[' + frame + '] Frame export @', getDateTime());
-      // Read pixels from gl buffer
-      var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
-      gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        Logger.debug('[' + frame + '] Frame export @', getDateTime());
+        // Read pixels from gl buffer
+        var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+        gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-      Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
-      // Write out the image into memory
-      encoder.addFrame(pixels);
+        Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
+        // Write out the image into memory
+        encoder.addFrame(pixels);
+
+      }
 
       /*finishExportGif();
       Logger.debug('Initializing export gif.');
@@ -1784,6 +1804,24 @@ function processFrame(program) {
       impulse -= impulse * 0.5;
       if (impulse < 0) {
         impulse = 0;
+      }
+
+      if (ax > 0) {
+        ax -= ax * 0.5;
+      } else {
+        ax += ax * 0.5;
+      }
+
+      if (ay > 0) {
+        ay -= ay * 0.5;
+      } else {
+        ay += ay * 0.5;
+      }
+
+      if (az > 0) {
+        az -= az * 0.5;
+      } else {
+        az += az * 0.5;
       }
 
       var delta = currentTime-lastFrameRenderTime;
@@ -1830,7 +1868,7 @@ function initExportGif(filename) {
 
   encoder.start();
   encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
-  encoder.setDelay(120);  // frame delay in ms
+  encoder.setDelay(40);  // frame delay in ms
   encoder.setQuality(10); // image quality. 10 is default.
 
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
@@ -2119,7 +2157,7 @@ Logger.debug('vertexAttribPointer gl errors=',gl.getError());
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
 Logger.debug('bindBuffer gl errors=',gl.getError());
     // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
-    var size = 4;                 // 3 components per iteration
+    var size = 3;                 // 3 components per iteration
     var type = gl.UNSIGNED_BYTE;          // the data is unsigned byte
     var normalize = true;         // normalize the data (convert from 0-255 to 0-1)
     var stride = 0;               // 0 = move forward size * sizeof(type) each iteration to get the next position
@@ -2149,7 +2187,9 @@ Logger.debug('bindBuffer gl errors=',gl.getError());
 //   	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // 16 faces = 16 x 2 triangles = 32
 //    gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
+
 gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
+//gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
 
     //   	gl.drawArrays(gl.TRIANGLES, 0, 16*6);
 /*
@@ -2472,8 +2512,8 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
   var vertixy = new Float32Array(rows*cols);
   var vertixz = new Float32Array(rows*cols);
 
-  gx=25;
-  gy=25;
+  gx=80;
+  gy=80;
 	gheight=25;
 
 	var i=0, j=0;
@@ -2484,19 +2524,34 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 
 	var verticesArray =new Float32Array(3*totverticesTS);//42);
 //	var verticeColorArray =new Float32Array(4*totverticesTS);
+  var verticeColorArray = new Float32Array(3*totverticesTS);
+
+
+  ex += getRandomArbitrary(0, impulseLevel);
+  ey += getRandomArbitrary(0, impulseLevel);
+  ez += getRandomArbitrary(0, impulseLevel);
+
+  ax += getRandomArbitrary(0, ex);
+  ay += getRandomArbitrary(0, ey);
+  az += getRandomArbitrary(0, ez);
+
+  if (getRandomArbitrary(0, 1) == 1) {
+    ax *= -1;
+  }
+  if (getRandomArbitrary(0, 1) == 1) {
+    ay *= -1;
+  }
+  if (getRandomArbitrary(0, 1) == 1) {
+    az *= -1;
+  }
 
 	for( var row =1;row<=rows;row++)
 	for(var col=1;col<= cols;col++)
 	{
-//			vertixx[j]=gx*col;
-//			vertixy[j]=gy*row;
-      vertixx[j]=(gx*col)+getRandomArbitrary(1, 5);
-			vertixy[j]=(gy*row)+getRandomArbitrary(1, 5);
-      vertixz[j] =getRandomArbitrary(1, 255);
 
-      /*if(zzTop[j]>0) vertixz[j] =0.0;
-			else if(perspective) 	vertixz[j]= -1*zzTop[j];
-			else 	vertixz[j]= -2*zzTop[j];*/
+      vertixx[j]=(gx*col)+ax;
+			vertixy[j]=(gy*row)+ay;
+      vertixz[j] = 10+az;
 			j++;
 	}
 
@@ -2518,7 +2573,7 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 	}
 
 
-	var k=0,n=0;
+	var k=0,m=0,n=0;
 	j=0;
 	for(i=0;i<triangleStripArray.length; i++)
 	{
@@ -2528,6 +2583,10 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 		verticesArray[k++]=vertixx[index-1];
 		verticesArray[k++]=vertixy[index-1];
 		verticesArray[k++]=vertixz[index-1];
+
+    verticeColorArray[m++]=vertixz[index-1];
+		verticeColorArray[m++]=vertixz[index-1];
+		verticeColorArray[m++]=vertixz[index-1];
   }
 
 	//gl.bindBuffer(gl.ARRAY_BUFFER, verticeBufferObject);
@@ -2538,8 +2597,35 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
   gl.bufferData(gl.ARRAY_BUFFER, verticesArray, gl.STATIC_DRAW);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, verticeColorArray, gl.STATIC_DRAW);
+
+  Logger.debug('Generated color field.');
+
   // Build color field based on vertices and load buffer data
-  initColorField(gl, rows, cols, triangleStripArray, vertixx, vertixy, vertixz, verticesArray);
+//  initColorField(gl, rows, cols, triangleStripArray, vertixx, vertixy, vertixz, verticesArray);
+
+
+  //var zh = vertixz.scaleBetween(10, 250);
+  //Logger.debug('zh=',zh);
+/*
+  var k=0,n=0;
+  j=0;
+  for(i=0;i<triangleStripArray.length; i++)
+  {
+    index=triangleStripArray[j];
+    j++;
+
+    // Vertex
+    verticeColorArray[k++]=0;//zh[index-1];
+    verticeColorArray[k++]=255;//zh[index-1];
+    verticeColorArray[k++]=0;//zh[index-1];
+
+
+    //verticeColorArray[k++]=0;//zh[index-1];
+  }
+*/
+
+
 
 //  return verticesArray;
 
@@ -2565,35 +2651,32 @@ Float32Array.prototype.scaleBetween = function(scaledMin, scaledMax) {
 
 function initColorField(gl, rows, cols, triangleStripArray, vertixx, vertixy, vertixz, verticesArray) {
 
-
-
 	var i=0, j=0;
 	var index=0;
 	var totverticesRC=2*cols*(rows-1) ;
 	var totverticesTS=2*cols*(rows-1)+2*(rows-2) ;
   var numVertices=totverticesTS;
 
-	var verticeColorArray = new Float32Array(4*totverticesTS);
+	var verticeColorArray = new Float32Array(3*totverticesTS);
+
+  var zh = vertixz.scaleBetween(10, 250);
+  //Logger.debug('zh=',zh);
+
+  var k=0,n=0;
+  j=0;
+  for(i=0;i<triangleStripArray.length; i++)
+  {
+    index=triangleStripArray[j];
+    j++;
+
+    // Vertex
+    verticeColorArray[k++]=0;//zh[index-1];
+    verticeColorArray[k++]=255;//zh[index-1];
+    verticeColorArray[k++]=0;//zh[index-1];
 
 
-  var zh = vertixz.scaleBetween(0, 255);
-  Logger.debug('zh=',zh);
-
-	var k=0,n=0;
-	j=0;
-	for(i=0;i<triangleStripArray.length; i++)
-	{
-		index=triangleStripArray[j];
-		j++;
-
-		verticeColorArray[n]=zh[index-1];
-		verticeColorArray[n+1]=zh[index-1];
-		verticeColorArray[n+2]=zh[index-1];
-		verticeColorArray[n+3]=255;
-
-    n += 4;
-	}
-
+    //verticeColorArray[k++]=0;//zh[index-1];
+  }
 
   gl.bufferData(gl.ARRAY_BUFFER, verticeColorArray, gl.STATIC_DRAW);
 
@@ -2601,108 +2684,6 @@ function initColorField(gl, rows, cols, triangleStripArray, vertixx, vertixy, ve
 
   return numVertices;
 }
-
-
-function initVertexField2(gl, reuse) {
-  var perspective=0;
-  var gheight;
-  var totverticesTS=0;
-
-  var cols=50, rows=50;
-  var gx,  gy;
-
-  var triangleStripArray = new Array();
-
-  var vertixx =  new Float32Array(rows*cols);
-  var vertixy = new Float32Array(rows*cols);
-  var vertixz = new Float32Array(rows*cols);
-
-  var verticeBufferObject;
-  var verticeColorBufferObject;
-
-  gx=25;
-  gy=25;
-	gheight=25;
-
-	var i=0, j=0;
-	var index=0;
-	var totverticesRC=2*cols*(rows-1) ;
-	var totverticesTS=2*cols*(rows-1)+2*(rows-2) ;
-  var numVertices=totverticesTS;
-
-  if (!reuse) {
-
-	var verticeArray =new Float32Array(3*totverticesTS);//42);
-	var verticeColorArray =new Float32Array(4*totverticesTS);
-
-	for( var row =1;row<=rows;row++)
-	for(var col=1;col<= cols;col++)
-	{
-			vertixx[j]=gx*col;
-			vertixy[j]=gy*row;
-      vertixz[j] =getRandomArbitrary(1, 40);
-
-      /*if(zzTop[j]>0) vertixz[j] =0.0;
-			else if(perspective) 	vertixz[j]= -1*zzTop[j];
-			else 	vertixz[j]= -2*zzTop[j];*/
-			j++;
-	}
-
-	j=0;
-	for(i=1;i<=totverticesRC;i+=2)
-	{
-			triangleStripArray[ j ]=(1 +i)/2;  //ODD
-			triangleStripArray[ j +1 ]=(cols*2+i+1)/2;//EVEN
-				if(  triangleStripArray[ j +1 ]%cols==0) //check for end of col
-			{
-				if( triangleStripArray[ j +1 ]!=cols && triangleStripArray[ j +1 ]!=cols*rows )
-				{
-					triangleStripArray[ j +2 ]=triangleStripArray[ j +1 ];
-					triangleStripArray[ j +3 ]=(1 +i+2)/2;
-					j+=2;
-				}
-			}
-			j+=2;
-	}
-	var k=0,n=0;
-	j=0;
-	for(i=0;i<triangleStripArray.length; i++)
-	{
-		index=triangleStripArray[j];
-		j++;
-
-		verticeArray[k++]=vertixx[index-1];
-		verticeArray[k++]=vertixy[index-1];
-		verticeArray[k++]=vertixz[index-1];
-		 if ( vertixz[index-1]  >=gheight )
-		 {
-			verticeColorArray[n++]=0.0;
-		 	verticeColorArray[n++]=0.0;
-			verticeColorArray[n++]=1.0;
-		}
-		else
-		{
-			verticeColorArray[n++]=1.0;
-			verticeColorArray[n++]=0.0;
-			verticeColorArray[n++]=0.0;
-		}
-			verticeColorArray[n++]=1.0;
-	}
-
- 	verticeBufferObject=gl.createBuffer();
-  verticeColorBufferObject=gl.createBuffer();
-}
-
-	gl.bindBuffer(gl.ARRAY_BUFFER, verticeBufferObject);
-	gl.bufferData(gl.ARRAY_BUFFER, verticeArray, gl.STATIC_DRAW);
-
-
-	gl.bindBuffer(gl.ARRAY_BUFFER, verticeColorBufferObject);
-	gl.bufferData(gl.ARRAY_BUFFER, verticeColorArray, gl.STATIC_DRAW);
-
-  return numVertices;
-}
-
 
 // Fill the buffer with the values that define a letter 'F'.
 function setGeometry(gl) {

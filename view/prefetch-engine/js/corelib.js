@@ -36,7 +36,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var bufferHeight = 1024;
 
   var frameCount = 0;
-  var frameLimit = 5;
+  var frameLimit = 15;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -50,7 +50,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var ey = 0;
   var ez = 0;
 
-  var impulseLevel = 2;
+  var impulseLevel = 6;
 
   var gifData = {
     frames: [],
@@ -1868,7 +1868,7 @@ function initExportGif(filename) {
 
   encoder.start();
   encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
-  encoder.setDelay(40);  // frame delay in ms
+  encoder.setDelay(100);  // frame delay in ms
   encoder.setQuality(10); // image quality. 10 is default.
 
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
@@ -2142,7 +2142,7 @@ var colorBuffer;
 
     // Bind the position buffer.
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-Logger.debug('bindBuffer gl errors=',gl.getError());
+    Logger.debug('bindBuffer gl errors=',gl.getError());
 
     // Tell the position attribute how to get data out of positionBuffer (ARRAY_BUFFER)
     var size = 3;          // 3 components per iteration
@@ -2151,15 +2151,15 @@ Logger.debug('bindBuffer gl errors=',gl.getError());
     var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
     var offset = 0;        // start at the beginning of the buffer
     gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
-Logger.debug('vertexAttribPointer gl errors=',gl.getError());
+    Logger.debug('vertexAttribPointer gl errors=',gl.getError());
 
     // Bind the color buffer.
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-Logger.debug('bindBuffer gl errors=',gl.getError());
+    Logger.debug('bindBuffer gl errors=',gl.getError());
     // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
-    var size = 3;                 // 3 components per iteration
-    var type = gl.UNSIGNED_BYTE;          // the data is unsigned byte
-    var normalize = true;         // normalize the data (convert from 0-255 to 0-1)
+    var size = 4;                 // 3 components per iteration
+    var type = gl.FLOAT;          // the data is unsigned byte
+    var normalize = false;         // normalize the data (convert from 0-255 to 0-1)
     var stride = 0;               // 0 = move forward size * sizeof(type) each iteration to get the next position
     var offset = 0;               // start at the beginning of the buffer
     gl.vertexAttribPointer(
@@ -2524,7 +2524,7 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 
 	var verticesArray =new Float32Array(3*totverticesTS);//42);
 //	var verticeColorArray =new Float32Array(4*totverticesTS);
-  var verticeColorArray = new Float32Array(3*totverticesTS);
+  var verticeColorArray = new Float32Array(4*totverticesTS);
 
 
   ex += getRandomArbitrary(0, impulseLevel);
@@ -2584,10 +2584,27 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 		verticesArray[k++]=vertixy[index-1];
 		verticesArray[k++]=vertixz[index-1];
 
-    verticeColorArray[m++]=vertixz[index-1];
-		verticeColorArray[m++]=vertixz[index-1];
-		verticeColorArray[m++]=vertixz[index-1];
+//    if ((i % 2) == 0) {
+  //    verticeColorArray[m++]=255;
+  //		verticeColorArray[m++]=0;
+  //		verticeColorArray[m++]=10+getRandomArbitrary(0, 245);
+//    } else {
+      verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*0.9);
+  		verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*0.9);
+      verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*0.7);
+      verticeColorArray[m++]=1;
+      //verticeColorArray[m++]=0.2;
+  		//verticeColorArray[m++]=i;
+  //  }
+    //verticeColorArray[m++]=0;
+
+    //verticeColorArray[m++]=vertixz[index-1];
+
+
   }
+
+
+
 
 	//gl.bindBuffer(gl.ARRAY_BUFFER, verticeBufferObject);
 	//gl.bufferData(gl.ARRAY_BUFFER, verticesArray, gl.STATIC_DRAW);
@@ -2599,7 +2616,7 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, verticeColorArray, gl.STATIC_DRAW);
 
-  Logger.debug('Generated color field.');
+//  Logger.debug('Generated color field, verticeColorArray=',verticeColorArray);
 
   // Build color field based on vertices and load buffer data
 //  initColorField(gl, rows, cols, triangleStripArray, vertixx, vertixy, vertixz, verticesArray);

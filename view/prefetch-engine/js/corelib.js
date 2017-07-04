@@ -50,7 +50,19 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var ey = 0;
   var ez = 0;
 
-  var impulseLevel = 6;
+  // Colours
+  var cx = 0;
+  var cy = 0;
+  var cz = 0;
+
+  var cxLimit = 0.8;
+  var cyLimit = 0.7;
+  var czLimit = 0.8;
+
+  var zoomIn = true;
+  var maxScale = 2.5;
+
+  var impulseLevel = 16;
 
   var gifData = {
     frames: [],
@@ -113,8 +125,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   // lookup uniforms
   var matrixLocation;
 
-  var translation = [0, 0, 0];
-  var rotation = [degToRad(0), degToRad(0), degToRad(0)];
+  var translation = [bufferWidth/2, -bufferHeight, 0];
+  var rotation = [degToRad(0), degToRad(0), degToRad(45)];
   var scale = [1, 1, 1];
 
 
@@ -1356,6 +1368,11 @@ FSS.WebGLRenderer.VS = function(lights) {
 
     // Pass the color to the fragment shader.
     'v_color = aColor;',
+//    'v_color += vec4(aPosition[2]/255.0,aPosition[2]/255.0,aPosition[2]/255.0,1.0);',
+
+    // Clamp color
+    'v_color = clamp(v_color, 0.0, 1.0);',
+
     // Calculate the vertex position
   //  'vec3 position = aPosition / uResolution;',//' * 2.0;',
   //  'vec3 position = aPosition / 1000.0;',
@@ -1824,6 +1841,19 @@ function processFrame(program) {
         az += az * 0.5;
       }
 
+      if (cx > 0) {
+        cx -= cx * 0.5;
+      }
+
+      if (cy > 0) {
+        cy -= cy * 0.5;
+      }
+
+      if (cz > 0) {
+        cz -= cz * 0.5;
+      }
+
+
       var delta = currentTime-lastFrameRenderTime;
       var deltaTime = dhm(delta);
       Logger.debug('[' + frame + '] Total frame render time:', deltaTime);
@@ -1868,7 +1898,7 @@ function initExportGif(filename) {
 
   encoder.start();
   encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
-  encoder.setDelay(100);  // frame delay in ms
+  encoder.setDelay(250);  // frame delay in ms
   encoder.setQuality(10); // image quality. 10 is default.
 
   Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
@@ -2302,11 +2332,29 @@ gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
   rotation[1] += degToRad(0);
   rotation[2] += degToRad(0);
   translation[0] += 0.0;
-  translation[0] -= 0.0;
+  translation[0] += 0.0;
   translation[2] += 0.0;
-  scale[0] /= 1.00;
-  scale[1] /= 1.00;
-  scale[2] /= 1.00;
+
+
+
+  if (zoomIn) {
+    scale[0] *= 1.03;
+    scale[1] *= 1.03;
+    scale[2] *= 1.03;
+  } else {
+    scale[0] *= 0.97;
+    scale[1] *= 0.97;
+    scale[2] *= 0.97;
+  }
+
+  if (scale[0] > maxScale) {
+    zoomIn = false;
+  }
+
+  if (scale[0] < 0.4) {
+    zoomIn = true;
+  }
+
   Logger.debug('translation=',translation);
   Logger.debug('rotation=',rotation);
   Logger.debug('scale=',scale);
@@ -2529,11 +2577,31 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 
   ex += getRandomArbitrary(0, impulseLevel);
   ey += getRandomArbitrary(0, impulseLevel);
-  ez += getRandomArbitrary(0, impulseLevel);
+  ez += getRandomArbitrary(10, 20);
 
   ax += getRandomArbitrary(0, ex);
   ay += getRandomArbitrary(0, ey);
   az += getRandomArbitrary(0, ez);
+
+  cx += 1/(1+getRandomArbitrary(1, 15));
+  cy += 1/(1+getRandomArbitrary(1, 25));
+  cz += 1/(1+getRandomArbitrary(1, 25));
+
+  if (cx > cxLimit) {
+    cx = cxLimit;
+  }
+  if (cy > cyLimit) {
+    cy = cyLimit;
+  }
+  if (cz > czLimit) {
+    cz = czLimit;
+  }
+
+  if (az > 155) {
+    az = 155;
+  }
+
+  Logger.debug('cx=',cx,'cy=',cy,'cz=',cz);
 
   if (getRandomArbitrary(0, 1) == 1) {
     ax *= -1;
@@ -2551,7 +2619,7 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 
       vertixx[j]=(gx*col)+ax;
 			vertixy[j]=(gy*row)+ay;
-      vertixz[j] = 10+az;
+      vertixz[j] = 100+az;
 			j++;
 	}
 
@@ -2589,9 +2657,9 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
   //		verticeColorArray[m++]=0;
   //		verticeColorArray[m++]=10+getRandomArbitrary(0, 245);
 //    } else {
-      verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*0.9);
-  		verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*0.9);
-      verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*0.7);
+      verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*cx);
+  		verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*cy);
+      verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*cz);
       verticeColorArray[m++]=1;
       //verticeColorArray[m++]=0.2;
   		//verticeColorArray[m++]=i;

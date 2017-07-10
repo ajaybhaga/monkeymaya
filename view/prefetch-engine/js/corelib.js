@@ -36,7 +36,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var bufferHeight = 1024;
 
   var frameCount = 0;
-  var frameLimit = 15;
+  var frameLimit = 5;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -125,9 +125,9 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   // lookup uniforms
   var matrixLocation;
 
-  var translation = [bufferWidth/2, -bufferHeight, 0];
-  var rotation = [degToRad(0), degToRad(0), degToRad(45)];
-  var scale = [1, 1, 1];
+  var translation = [0, 0, 0];
+  var rotation = [degToRad(0), degToRad(0), degToRad(0)];
+  var scale = [0.2, 0.2, 0.2];
 
 
   function supertriangle(vertices) {
@@ -1480,13 +1480,17 @@ function rgbToHex(r, g, b) {
 }
 
 // Returns a Vector4 rgba representing triangle color
-function getTriangleColor(centroid, bBox, renderer) {
+function getTriangleColor(centroidX, centroidY, bBox) {
 
   var count = 0;
   var gradientData = [];
 
+  Logger.debug('getTriangleColor -> bBox=',bBox);
+
   // Use gif color if loaded
   if (gifData.width != 0) {
+
+
 
     ///var sx = Math.floor( img.canvas.width * (box.x + box.width/2) / svg.width );
     //var sy = Math.floor( img.canvas.height * (box.y + box.height/2) / svg.height );
@@ -1496,27 +1500,38 @@ function getTriangleColor(centroid, bBox, renderer) {
     //var offsetX = renderer.width * -0.5;
     //var offsetY = renderer.height * 0.5;
 
-    var x = centroid[0] + (bBox[1]-bBox[0])/2;
-    var y = centroid[1] + (bBox[3]-bBox[2])/2;
+    var x = centroidX;// + (bBox[1]-bBox[0])/2;
+    var y = centroidY;// + (bBox[3]-bBox[2])/2;
+
     //var sx = img.canvas.width * (x / renderer.width);
+  //  Logger.debug('x =',x);
+//    Logger.debug('y =',y);
+//    Logger.debug('gifData.width =',gifData.width);
+//    Logger.debug('gifData.height =',gifData.height);
+
     //var sy = img.canvas.height * (y / renderer.height);
 
     //Logger.debug('bBox[0]=',bBox[0],'bBox[1]=',bBox[1],'bBox[1]-bBox[0]=',bBox[1]-bBox[0]);
 
     var sx = Math.floor(gifData.width * (x / (bBox[1]-bBox[0])));
     var sy = Math.floor(gifData.height * (y / (bBox[3]-bBox[2])));
+  //  Logger.debug('sx =',sx);
+  //  Logger.debug('sy =',sy);
 
     var iy = gifData.height-sy;
     //Logger.debug('sx=',sx,'sy=',sy);
     //var px = img.context.getImageData(sx, iy, 1, 1).data;
 
-    var r = getRandomArbitrary(0,255);//gifData.frames[0][iy*gifData.width + sx + 0];
-    var g = getRandomArbitrary(0,255);//gifData.frames[0][iy*gifData.width + sx + 1];
-    var b = getRandomArbitrary(0,255);//gifData.frames[0][iy*gifData.width + sx + 2];
+//    var r = gifData.frames[0][iy*gifData.width + sx + 0]/255.0;
+//    var g = gifData.frames[0][iy*gifData.width + sx + 1]/255.0;
+//    var b = gifData.frames[0][iy*gifData.width + sx + 2]/255.0;
+var r = 255.0 * (sx/gifData.width); //gifData.frames[0][sy*gifData.width + sx + 0]/255.0;
+var g = 255.0 * (sx/gifData.width);// gifData.frames[0][sy*gifData.width + sx + 1]/255.0;
+var b = 255.0 * (sx/gifData.width);// gifData.frames[0][sy*gifData.width + sx + 2]/255.0;
 
-    var color = new FSS.Color('#FFFFFF', 1);
-    //Logger.debug('color =',color);
-    return color;
+    //var color = new FSS.Color('#FFFFFF', 1);
+    Logger.debug('[r,g,b] =',[r,g,b]);
+    return [r,g,b];
   }
 
   Logger.debug('No gif loaded, defaulting to black.');
@@ -2336,7 +2351,7 @@ gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
   translation[2] += 0.0;
 
 
-
+/*
   if (zoomIn) {
     scale[0] *= 1.03;
     scale[1] *= 1.03;
@@ -2345,7 +2360,7 @@ gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
     scale[0] *= 0.97;
     scale[1] *= 0.97;
     scale[2] *= 0.97;
-  }
+  }*/
 
   if (scale[0] > maxScale) {
     zoomIn = false;
@@ -2551,7 +2566,14 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
   var gheight;
   var totverticesTS=0;
 
-  var cols=50, rows=50;
+  var xMin, xMax, yMin, yMax;
+  xMin = Number.POSITIVE_INFINITY;
+  xMax = Number.NEGATIVE_INFINITY;
+  yMin = Number.POSITIVE_INFINITY;
+  yMax = Number.NEGATIVE_INFINITY;
+
+  // This needs to be double the resolution of the gif
+  var cols=100, rows=100;
   var gx,  gy;
 
   var triangleStripArray = new Array();
@@ -2559,6 +2581,10 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
   var vertixx =  new Float32Array(rows*cols);
   var vertixy = new Float32Array(rows*cols);
   var vertixz = new Float32Array(rows*cols);
+
+  var vertixr =  new Float32Array(rows*cols);
+  var vertixg = new Float32Array(rows*cols);
+  var vertixb = new Float32Array(rows*cols);
 
   gx=80;
   gy=80;
@@ -2613,15 +2639,102 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
     az *= -1;
   }
 
-	for( var row =1;row<=rows;row++)
-	for(var col=1;col<= cols;col++)
-	{
+	for (var row =0; row<rows; row++) {
+	   for (var col=0; col<cols; col++) {
 
-      vertixx[j]=(gx*col)+ax;
-			vertixy[j]=(gy*row)+ay;
+      vertixx[j]=(gx*col);//+ax;
+			vertixy[j]=(gy*row);//+ay;
       vertixz[j] = 100+az;
-			j++;
+
+      if (vertixx[j] < xMin) {
+        xMin = vertixx[j];
+      }
+
+      if (vertixx[j] > xMax) {
+        xMax = vertixx[j];
+      }
+
+      if (vertixy[j] < yMin) {
+        yMin = vertixy[j];
+      }
+
+      if (vertixy[j] > yMax) {
+        yMax = vertixy[j];
+      }
+
+      j++;
+    }
+  }
+
+  var vertexFieldBBox = [xMin, xMax, yMin, yMax];
+
+  for (var row = 0; row < rows; row += 1) {
+	   for (var col= 0; col < cols; col += 1) {
+
+       j = row*cols + col;
+
+       var r = 0.0;
+       var g = 0.0;
+       var b = 0.0;
+
+       var px = vertixx[j];
+       var py = vertixy[j];
+
+//       getTriangleColor()
+       var rgb = getTriangleColor(px, py, vertexFieldBBox);
+  //     var rgb = [1.0, 0.0, 1.0];
+
+       r = rgb[0];
+       g = rgb[1];
+       b = rgb[2];
+
+/*
+       if  (px % 2 == 0) {
+         r = 1.0;
+         g = 1.0;
+         b = 1.0;
+       } else {
+         r = 0.0;
+         g = 0.0;
+         b = 0.0;
+       }
+*/
+/*
+       if  (py % 2 == 0) {
+         b = 0.0;
+        } else {
+          b = 1.0;
+        }
+*/
+       // #1
+       vertixr[j]=r;
+       vertixg[j]=g;
+       vertixb[j]=b;
+
+       // #2
+//       vertixr[j+1]=r;
+//       vertixg[j+1]=g;
+//       vertixb[j+1]=b;
+
+       // #3
+//       vertixr[j+cols]=r;
+//       vertixg[j+cols]=g;
+//       vertixb[j+cols]=b;
+
+       // #4
+    //   vertixr[j+1+cols]=r;
+  //     vertixg[j+1+cols]=g;
+//       vertixb[j+1+cols]=b;
+
+
+
+      }
 	}
+
+//  var vertixr = vertixr.scaleBetween(1, 255);
+//  var vertixg = vertixg.scaleBetween(1, 255);
+//  var vertixb = vertixb.scaleBetween(1, 255);
+
 
 	j=0;
 	for(i=1;i<=totverticesRC;i+=2)
@@ -2640,7 +2753,6 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 			j+=2;
 	}
 
-
 	var k=0,m=0,n=0;
 	j=0;
 	for(i=0;i<triangleStripArray.length; i++)
@@ -2657,10 +2769,12 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
   //		verticeColorArray[m++]=0;
   //		verticeColorArray[m++]=10+getRandomArbitrary(0, 245);
 //    } else {
-      verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*cx);
-  		verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*cy);
-      verticeColorArray[m++]=0.1+((getRandomArbitrary(0, 255)/255.0)*cz);
-      verticeColorArray[m++]=1;
+
+      verticeColorArray[m++]=vertixr[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cx);
+  		verticeColorArray[m++]=vertixg[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cy);
+      verticeColorArray[m++]=vertixb[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cz);
+      verticeColorArray[m++]=1.0;
+
       //verticeColorArray[m++]=0.2;
   		//verticeColorArray[m++]=i;
   //  }

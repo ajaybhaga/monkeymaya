@@ -90,6 +90,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 //
   var gifyParse = require('gify-parse');
   var getPixels = require("get-pixels");
+  var pixel = require("pixel");
+
 
   exports.gl = gl;
 
@@ -1480,12 +1482,9 @@ function rgbToHex(r, g, b) {
 }
 
 // Returns a Vector4 rgba representing triangle color
-function getTriangleColor(centroidX, centroidY, bBox) {
+function getTriangleColor(centroidX, centroidY, bBox, frame) {
 
-  var count = 0;
-  var gradientData = [];
-
-  Logger.debug('getTriangleColor -> bBox=',bBox);
+  //Logger.debug('getTriangleColor -> bBox=',bBox);
 
   // Use gif color if loaded
   if (gifData.width != 0) {
@@ -1519,18 +1518,26 @@ function getTriangleColor(centroidX, centroidY, bBox) {
   //  Logger.debug('sy =',sy);
 
     var iy = gifData.height-sy;
-    //Logger.debug('sx=',sx,'sy=',sy);
+//    Logger.debug('gifData.width=',gifData.width,'gifData.height=',gifData.height);
+  //  Logger.debug('sx=',sx,'sy=',sy);
+//    Logger.debug('sx=',sx,'sy=',sy);
     //var px = img.context.getImageData(sx, iy, 1, 1).data;
 
 //    var r = gifData.frames[0][iy*gifData.width + sx + 0]/255.0;
 //    var g = gifData.frames[0][iy*gifData.width + sx + 1]/255.0;
 //    var b = gifData.frames[0][iy*gifData.width + sx + 2]/255.0;
-var r = 255.0 * (sx/gifData.width); //gifData.frames[0][sy*gifData.width + sx + 0]/255.0;
-var g = 255.0 * (sx/gifData.width);// gifData.frames[0][sy*gifData.width + sx + 1]/255.0;
-var b = 255.0 * (sx/gifData.width);// gifData.frames[0][sy*gifData.width + sx + 2]/255.0;
+
+//  Logger.debug('gifData.frames',gifData.frames);
+//  Logger.debug('gifData.width',gifData.width);
+//  Logger.debug('gifData.height',gifData.height);
+
+
+  var r = gifData.frames[frame][sy*gifData.width + sx + 0]/255.0;
+  var g = gifData.frames[frame][sy*gifData.width + sx + 1]/255.0;
+  var b = gifData.frames[frame][sy*gifData.width + sx + 2]/255.0;
 
     //var color = new FSS.Color('#FFFFFF', 1);
-    Logger.debug('[r,g,b] =',[r,g,b]);
+    //Logger.debug('[r,g,b] =',[r,g,b]);
     return [r,g,b];
   }
 
@@ -1637,8 +1644,54 @@ function initialise(inputGifFile) {
   addLights();
   resize(bufferWidth, bufferHeight);
 
-  Logger.debug('Retrieving gif.');
+  Logger.debug('Retrieving gif =',inputGifFile);
 
+  //var gif= 'https://59naga.github.io/fixtures/animated.GIF';
+  pixel.parse(inputGifFile).then(function(images){
+    console.log(images.loopCount); // 0(Infinite)
+    for (var i = 0; i < images.length; i++) {
+      //Logger.debug("Stored frames =", gifData.frames.length);
+
+      gifData.width = images[i].width;
+      gifData.height = images[i].height;
+
+      console.log('gifData.width =',gifData.width);
+      console.log('gifData.height =',gifData.height);
+      //console.log('images[i] =',images[i]);
+
+      // Make space for extra alpha channel
+      var fullData =  new Uint8Array(((images[i].data.length)/3)*4);
+
+      var pixelIndex = 0;
+      // Populate full data set (including alpha channel)
+      for (var j = 0; j < images[i].data.length; j += 3) {
+        fullData[pixelIndex] = getRandomArbitrary(1,255);//images[i].data[j];
+        fullData[pixelIndex+1] = 255;//images[i].data[j+1];
+        fullData[pixelIndex+2] = 255;//images[i].data[j+2];
+        fullData[pixelIndex+3] = 10;
+        pixelIndex++;
+//        images[i].data[j] = 0; //getRandomArbitrary(1,255);
+//        images[i].data[j+1] = 255;//getRandomArbitrary(1,255);
+  //      images[i].data[j+2] = 0;//getRandomArbitrary(1,255);
+      }
+
+      //[numFrames, width, height, 4]
+      gifData.frames.push(fullData);
+
+      //var r = gifData.frames[frame][sy*gifData.width + sx + 0];///255.0;
+
+      //Logger.debug("pixel.data =", images[i].data);
+      Logger.debug("Stored frames =", gifData.frames.length);
+    }
+
+    Logger.debug('Initializing export gif.');
+    initExportGif('render.gif');
+
+    var program = renderer.buildProgram(scene.lights.length);
+    //Logger.debug(program);
+  });
+
+/*
   getPixels(inputGifFile, function(err, pixels) {
     if(err) {
       Logger.debug("Bad image path");
@@ -1658,7 +1711,7 @@ function initialise(inputGifFile) {
 
     var program = renderer.buildProgram(scene.lights.length);
     //Logger.debug(program);
-  });
+  });*/
 }
 
 function createRenderer() {
@@ -2142,6 +2195,7 @@ function fillBuffers() {
 
 var positionBuffer;
 var colorBuffer;
+var frame = 0;
 
 
   // Draw the scene.
@@ -2175,7 +2229,12 @@ var colorBuffer;
 
     // Put geometry data into buffer
     //setGeometry(gl);
-    var numVertices = initVertexField(gl, positionBuffer, colorBuffer);
+    var numVertices = initVertexField(gl, positionBuffer, colorBuffer, frame);
+    frame++;
+    if (frame > gifData.frames.length) {
+      Logger.debug('Frames exceeded, reset.');
+      frame = 0;
+    }
 
     // Turn on the position attribute
     //gl.enableVertexAttribArray(program.attributes.position.buffer);
@@ -2561,7 +2620,7 @@ var m4 = {
 
 };
 
-function initVertexField(gl, positionBuffer, colorBuffer) {
+function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   var perspective=0;
   var gheight;
   var totverticesTS=0;
@@ -2597,8 +2656,8 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
   var numVertices=totverticesTS;
 
 	var verticesArray =new Float32Array(3*totverticesTS);//42);
-//	var verticeColorArray =new Float32Array(4*totverticesTS);
-  var verticeColorArray = new Float32Array(4*totverticesTS);
+  var verticeColorArray =new Float32Array(4*totverticesTS);
+  //var verticeColorArray = new Uint8Array(3*totverticesTS);
 
 
   ex += getRandomArbitrary(0, impulseLevel);
@@ -2673,15 +2732,15 @@ function initVertexField(gl, positionBuffer, colorBuffer) {
 
        j = row*cols + col;
 
-       var r = 0.0;
-       var g = 0.0;
-       var b = 0.0;
+       var r = 0;
+       var g = 0;
+       var b = 0;
 
        var px = vertixx[j];
        var py = vertixy[j];
 
 //       getTriangleColor()
-       var rgb = getTriangleColor(px, py, vertexFieldBBox);
+       var rgb = getTriangleColor(px, py, vertexFieldBBox, frame);
   //     var rgb = [1.0, 0.0, 1.0];
 
        r = rgb[0];

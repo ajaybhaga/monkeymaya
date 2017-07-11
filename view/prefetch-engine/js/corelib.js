@@ -80,10 +80,10 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   // Create parameters object
   var parameters = {
     preserveDrawingBuffer: false,
-    premultipliedAlpha: true,
+    premultipliedAlpha: false,
     antialias: true,
     stencil: true,
-    alpha: true
+    alpha: false
   };
 
   var gl = require('gl')(bufferWidth, bufferHeight, parameters);
@@ -1369,11 +1369,14 @@ FSS.WebGLRenderer.VS = function(lights) {
     //'gl_Position = u_matrix * a_position;',
 
     // Pass the color to the fragment shader.
-    'v_color = aColor;',
+//    'v_color = aColor;',
+    'v_color = vec4(aColor[0],aColor[1],aColor[2],1.0);',
+//    'v_color = vec4(1.0,1.0,0.0,0.2);',
+
 //    'v_color += vec4(aPosition[2]/255.0,aPosition[2]/255.0,aPosition[2]/255.0,1.0);',
 
     // Clamp color
-    'v_color = clamp(v_color, 0.0, 1.0);',
+//    'v_color = clamp(v_color, 0.0, 1.0);',
 
     // Calculate the vertex position
   //  'vec3 position = aPosition / uResolution;',//' * 2.0;',
@@ -1499,7 +1502,7 @@ function getTriangleColor(centroidX, centroidY, bBox, frame) {
     //var offsetX = renderer.width * -0.5;
     //var offsetY = renderer.height * 0.5;
 
-    var x = centroidX;// + (bBox[1]-bBox[0])/2;
+    var x = centroidX; //+ (bBox[1]-bBox[0])/2;
     var y = centroidY;// + (bBox[3]-bBox[2])/2;
 
     //var sx = img.canvas.width * (x / renderer.width);
@@ -1517,6 +1520,9 @@ function getTriangleColor(centroidX, centroidY, bBox, frame) {
   //  Logger.debug('sx =',sx);
   //  Logger.debug('sy =',sy);
 
+//  Logger.debug('x=',x,',y=',y,'sx=',sx,'sy=',sy);
+
+
     var iy = gifData.height-sy;
 //    Logger.debug('gifData.width=',gifData.width,'gifData.height=',gifData.height);
   //  Logger.debug('sx=',sx,'sy=',sy);
@@ -1531,10 +1537,17 @@ function getTriangleColor(centroidX, centroidY, bBox, frame) {
 //  Logger.debug('gifData.width',gifData.width);
 //  Logger.debug('gifData.height',gifData.height);
 
+//for (var j = 0; j < images[i].data.length; j += 3) {
+//  fullData[pixelIndex] = 0;//getRandomArbitrary(1,255);//images[i].data[j];
+//  fullData[pixelIndex+1] = 255;//images[i].data[j+1];
+//  fullData[pixelIndex+2] = 0;//images[i].data[j+2];
+//  fullData[pixelIndex+3] = 255;
 
-  var r = gifData.frames[frame][sy*gifData.width + sx + 0]/255.0;
-  var g = gifData.frames[frame][sy*gifData.width + sx + 1]/255.0;
-  var b = gifData.frames[frame][sy*gifData.width + sx + 2]/255.0;
+  var r = sx%255;//gifData.frames[frame][sy*gifData.width + sx + 0];
+  var g = sx % 50 + sy % 50;//gifData.frames[frame][sy*gifData.width + sx + 1];
+  var b = sx % 50 + sy % 50;//gifData.frames[frame][sy*gifData.width + sx + 2];
+
+
 
     //var color = new FSS.Color('#FFFFFF', 1);
     //Logger.debug('[r,g,b] =',[r,g,b]);
@@ -1660,20 +1673,21 @@ function initialise(inputGifFile) {
       //console.log('images[i] =',images[i]);
 
       // Make space for extra alpha channel
-      var fullData =  new Uint8Array(((images[i].data.length)/3)*4);
+      var fullData =  new Uint8Array(gifData.width*gifData.height*3);
+      Logger.debug('fullData length=',fullData.length);
 
       var pixelIndex = 0;
-      // Populate full data set (including alpha channel)
-      for (var j = 0; j < images[i].data.length; j += 3) {
-        fullData[pixelIndex] = getRandomArbitrary(1,255);//images[i].data[j];
-        fullData[pixelIndex+1] = 255;//images[i].data[j+1];
-        fullData[pixelIndex+2] = 255;//images[i].data[j+2];
-        fullData[pixelIndex+3] = 10;
-        pixelIndex++;
+      // Populate full data set
+      for (var j = 0; j < fullData.length; j += 3) {
+        fullData[j] = images[i].data[pixelIndex];
+        fullData[j+1] = images[i].data[pixelIndex+1];
+        fullData[j+2] = images[i].data[pixelIndex+2];
+        pixelIndex += 4;
 //        images[i].data[j] = 0; //getRandomArbitrary(1,255);
 //        images[i].data[j+1] = 255;//getRandomArbitrary(1,255);
   //      images[i].data[j+2] = 0;//getRandomArbitrary(1,255);
       }
+
 
       //[numFrames, width, height, 4]
       gifData.frames.push(fullData);
@@ -2252,7 +2266,7 @@ var frame = 0;
     var size = 3;          // 3 components per iteration
     var type = gl.FLOAT;   // the data is 32bit floats
     var normalize = false; // don't normalize the data
-    var stride = 0;        // 0 = move forward size * sizeof(type) each iteration to get the next position
+    var stride = 3*4;        // 0 = move forward size * sizeof(type) each iteration to get the next position
     var offset = 0;        // start at the beginning of the buffer
     gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
     Logger.debug('vertexAttribPointer gl errors=',gl.getError());
@@ -2261,9 +2275,9 @@ var frame = 0;
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     Logger.debug('bindBuffer gl errors=',gl.getError());
     // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
-    var size = 4;                 // 3 components per iteration
-    var type = gl.FLOAT;          // the data is unsigned byte
-    var normalize = false;         // normalize the data (convert from 0-255 to 0-1)
+    var size = 3;                 // 3 components per iteration
+    var type = gl.UNSIGNED_BYTE;          // the data is unsigned byte
+    var normalize = true;         // normalize the data (convert from 0-255 to 0-1)
     var stride = 0;               // 0 = move forward size * sizeof(type) each iteration to get the next position
     var offset = 0;               // start at the beginning of the buffer
     gl.vertexAttribPointer(
@@ -2641,10 +2655,6 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   var vertixy = new Float32Array(rows*cols);
   var vertixz = new Float32Array(rows*cols);
 
-  var vertixr =  new Float32Array(rows*cols);
-  var vertixg = new Float32Array(rows*cols);
-  var vertixb = new Float32Array(rows*cols);
-
   gx=80;
   gy=80;
 	gheight=25;
@@ -2656,8 +2666,8 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   var numVertices=totverticesTS;
 
 	var verticesArray =new Float32Array(3*totverticesTS);//42);
-  var verticeColorArray =new Float32Array(4*totverticesTS);
-  //var verticeColorArray = new Uint8Array(3*totverticesTS);
+  //var verticeColorArray =new Float32Array(3*totverticesTS);
+  var verticeColorArray = new Uint8Array(3*totverticesTS);
 
 
   ex += getRandomArbitrary(0, impulseLevel);
@@ -2727,6 +2737,40 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
 
   var vertexFieldBBox = [xMin, xMax, yMin, yMax];
 
+  var  y = 0;
+//  for (var x = 0; x < vertixx.length; x++) {
+    for (var row =0; row<rows; row++) {
+  	   for (var col=0; col<cols; col++) {
+
+    var x = row*cols + col;
+
+    var px = vertixx[x];// + (vertexFieldBBox[1]-vertexFieldBBox[0])/2;
+    var py = vertixy[x];// + (vertexFieldBBox[3]-vertexFieldBBox[2])/2;
+
+    //       getTriangleColor()
+    //getTriangleColor(px, py, vertexFieldBBox, frame);
+    //rgb = [255,0,100];
+    var sx = Math.floor(gifData.width * (px / (vertexFieldBBox[1]-vertexFieldBBox[0])));
+    var sy = Math.floor(gifData.height * (py / (vertexFieldBBox[3]-vertexFieldBBox[2])));
+    //var rgb = [sx*8 % 255,0.0,sy*8 % 255];
+
+    var iy = gifData.height-sy;
+
+    //Logger.debug('sx=',sx,'sy=',sy);
+
+    var rgb = [gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 0],gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 1],gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 2]];
+
+    //    var r = gifData.frames[0][iy*gifData.width + sx + 0]/255.0;
+    //    var g = gifData.frames[0][iy*gifData.width + sx + 1]/255.0;
+    //    var b = gifData.frames[0][iy*gifData.width + sx + 2]/255.0;
+
+
+    verticeColorArray[y++]=rgb[0];//getRandomArbitrary(0, 255);//vertixr[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cx);
+    verticeColorArray[y++]=rgb[1];//vertixg[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cy);
+    verticeColorArray[y++]=rgb[2];//vertixb[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cz);
+}
+}
+/*
   for (var row = 0; row < rows; row += 1) {
 	   for (var col= 0; col < cols; col += 1) {
 
@@ -2747,49 +2791,9 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
        g = rgb[1];
        b = rgb[2];
 
-/*
-       if  (px % 2 == 0) {
-         r = 1.0;
-         g = 1.0;
-         b = 1.0;
-       } else {
-         r = 0.0;
-         g = 0.0;
-         b = 0.0;
-       }
-*/
-/*
-       if  (py % 2 == 0) {
-         b = 0.0;
-        } else {
-          b = 1.0;
-        }
-*/
-       // #1
-       vertixr[j]=r;
-       vertixg[j]=g;
-       vertixb[j]=b;
-
-       // #2
-//       vertixr[j+1]=r;
-//       vertixg[j+1]=g;
-//       vertixb[j+1]=b;
-
-       // #3
-//       vertixr[j+cols]=r;
-//       vertixg[j+cols]=g;
-//       vertixb[j+cols]=b;
-
-       // #4
-    //   vertixr[j+1+cols]=r;
-  //     vertixg[j+1+cols]=g;
-//       vertixb[j+1+cols]=b;
-
-
-
       }
 	}
-
+*/
 //  var vertixr = vertixr.scaleBetween(1, 255);
 //  var vertixg = vertixg.scaleBetween(1, 255);
 //  var vertixb = vertixb.scaleBetween(1, 255);
@@ -2829,11 +2833,7 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   //		verticeColorArray[m++]=10+getRandomArbitrary(0, 245);
 //    } else {
 
-      verticeColorArray[m++]=vertixr[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cx);
-  		verticeColorArray[m++]=vertixg[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cy);
-      verticeColorArray[m++]=vertixb[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cz);
-      verticeColorArray[m++]=1.0;
-
+      //verticeColorArray[m++]=0.2;//vertixa[index-1];
       //verticeColorArray[m++]=0.2;
   		//verticeColorArray[m++]=i;
   //  }
@@ -2903,44 +2903,6 @@ Float32Array.prototype.scaleBetween = function(scaledMin, scaledMax) {
   var max = Math.max.apply(Math, this);
   var min = Math.min.apply(Math, this);
   return this.map(num => (scaledMax-scaledMin)*(num-min)/(max-min)+scaledMin);
-}
-
-
-
-function initColorField(gl, rows, cols, triangleStripArray, vertixx, vertixy, vertixz, verticesArray) {
-
-	var i=0, j=0;
-	var index=0;
-	var totverticesRC=2*cols*(rows-1) ;
-	var totverticesTS=2*cols*(rows-1)+2*(rows-2) ;
-  var numVertices=totverticesTS;
-
-	var verticeColorArray = new Float32Array(3*totverticesTS);
-
-  var zh = vertixz.scaleBetween(10, 250);
-  //Logger.debug('zh=',zh);
-
-  var k=0,n=0;
-  j=0;
-  for(i=0;i<triangleStripArray.length; i++)
-  {
-    index=triangleStripArray[j];
-    j++;
-
-    // Vertex
-    verticeColorArray[k++]=0;//zh[index-1];
-    verticeColorArray[k++]=255;//zh[index-1];
-    verticeColorArray[k++]=0;//zh[index-1];
-
-
-    //verticeColorArray[k++]=0;//zh[index-1];
-  }
-
-  gl.bufferData(gl.ARRAY_BUFFER, verticeColorArray, gl.STATIC_DRAW);
-
-  Logger.debug('Generated color field.');
-
-  return numVertices;
 }
 
 // Fill the buffer with the values that define a letter 'F'.

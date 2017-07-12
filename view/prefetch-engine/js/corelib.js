@@ -2737,39 +2737,6 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
 
   var vertexFieldBBox = [xMin, xMax, yMin, yMax];
 
-  var  y = 0;
-//  for (var x = 0; x < vertixx.length; x++) {
-    for (var row =0; row<rows; row++) {
-  	   for (var col=0; col<cols; col++) {
-
-    var x = row*cols + col;
-
-    var px = vertixx[x];// + (vertexFieldBBox[1]-vertexFieldBBox[0])/2;
-    var py = vertixy[x];// + (vertexFieldBBox[3]-vertexFieldBBox[2])/2;
-
-    //       getTriangleColor()
-    //getTriangleColor(px, py, vertexFieldBBox, frame);
-    //rgb = [255,0,100];
-    var sx = Math.floor(gifData.width * (px / (vertexFieldBBox[1]-vertexFieldBBox[0])));
-    var sy = Math.floor(gifData.height * (py / (vertexFieldBBox[3]-vertexFieldBBox[2])));
-    //var rgb = [sx*8 % 255,0.0,sy*8 % 255];
-
-    var iy = gifData.height-sy;
-
-    //Logger.debug('sx=',sx,'sy=',sy);
-
-    var rgb = [gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 0],gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 1],gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 2]];
-
-    //    var r = gifData.frames[0][iy*gifData.width + sx + 0]/255.0;
-    //    var g = gifData.frames[0][iy*gifData.width + sx + 1]/255.0;
-    //    var b = gifData.frames[0][iy*gifData.width + sx + 2]/255.0;
-
-
-    verticeColorArray[y++]=rgb[0];//getRandomArbitrary(0, 255);//vertixr[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cx);
-    verticeColorArray[y++]=rgb[1];//vertixg[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cy);
-    verticeColorArray[y++]=rgb[2];//vertixb[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cz);
-}
-}
 /*
   for (var row = 0; row < rows; row += 1) {
 	   for (var col= 0; col < cols; col += 1) {
@@ -2817,7 +2784,8 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
 	}
 
 	var k=0,m=0,n=0;
-	j=0;
+	var j=0;
+  var  y = 0;
 	for(i=0;i<triangleStripArray.length; i++)
 	{
 		index=triangleStripArray[j];
@@ -2826,6 +2794,67 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
 		verticesArray[k++]=vertixx[index-1];
 		verticesArray[k++]=vertixy[index-1];
 		verticesArray[k++]=vertixz[index-1];
+
+
+    var px = vertixx[index-1];// + (vertexFieldBBox[1]-vertexFieldBBox[0])/2;
+    var py = vertixy[index-1];// + (vertexFieldBBox[3]-vertexFieldBBox[2])/2;
+
+    //       getTriangleColor()
+    //getTriangleColor(px, py, vertexFieldBBox, frame);
+    //rgb = [255,0,100];
+    var sx = Math.floor(gifData.width * (px / (vertexFieldBBox[1]-vertexFieldBBox[0])));
+    var sy = Math.floor(gifData.height * (py / (vertexFieldBBox[3]-vertexFieldBBox[2])));
+    //var rgb = [sx*8 % 255,0.0,sy*8 % 255];
+
+    var iy = gifData.height-sy;
+
+    //Logger.debug('sx=',sx,'sy=',sy);
+
+    var rgb = [
+      // Red
+      (gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx-1)*3) + 0]
+      + gifData.frames[frame][(iy-1)*(gifData.width*3) + (sx*3) + 0]
+      + gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx+1)*3) + 0]
+      + gifData.frames[frame][iy*(gifData.width*3) + ((sx+1)*3) + 0]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx+1)*3) + 0]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + (sx*3) + 0]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx-1)*3) + 0]
+      + gifData.frames[frame][iy*(gifData.width*3) + ((sx-1)*3) + 0])/8,
+
+      // Green
+      (gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx-1)*3) + 1]
+      + gifData.frames[frame][(iy-1)*(gifData.width*3) + (sx*3) + 1]
+      + gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx+1)*3) + 1]
+      + gifData.frames[frame][iy*(gifData.width*3) + ((sx+1)*3) + 1]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx+1)*3) + 1]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + (sx*3) + 1]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx-1)*3) + 1]
+      + gifData.frames[frame][iy*(gifData.width*3) + ((sx-1)*3) + 1])/8,
+
+      // Blue
+      (gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx-1)*3) + 2]
+      + gifData.frames[frame][(iy-1)*(gifData.width*3) + (sx*3) + 2]
+      + gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx+1)*3) + 2]
+      + gifData.frames[frame][iy*(gifData.width*3) + ((sx+1)*3) + 2]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx+1)*3) + 2]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + (sx*3) + 2]
+      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx-1)*3) + 2]
+      + gifData.frames[frame][iy*(gifData.width*3) + ((sx-1)*3) + 2])/8
+  ];
+
+
+    //var rgb = [gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 0],gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 1],gifData.frames[frame][iy*(gifData.width*3) + (sx*3) + 2]];
+//var rgb = [255,0,255];
+
+    //    var r = gifData.frames[0][iy*gifData.width + sx + 0]/255.0;
+    //    var g = gifData.frames[0][iy*gifData.width + sx + 1]/255.0;
+    //    var b = gifData.frames[0][iy*gifData.width + sx + 2]/255.0;
+
+
+    verticeColorArray[y++]=rgb[0];//getRandomArbitrary(0, 255);//vertixr[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cx);
+    verticeColorArray[y++]=rgb[1];//vertixg[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cy);
+    verticeColorArray[y++]=rgb[2];//vertixb[index-1];//0.1+((getRandomArbitrary(0, 255)/255.0)*cz);
+
 
 //    if ((i % 2) == 0) {
   //    verticeColorArray[m++]=255;

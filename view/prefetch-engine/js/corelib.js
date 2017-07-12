@@ -62,7 +62,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var zoomIn = true;
   var maxScale = 2.5;
 
-  var impulseLevel = 16;
+  var impulseLevel = 20;
 
   var gifData = {
     frames: [],
@@ -1646,7 +1646,7 @@ var webglRenderer;
 //------------------------------
 // Methods
 //------------------------------
-function initialise(inputGifFile) {
+function initialise(inputGifFile, outputGifFile) {
   Logger.debug('Creating renderer.');
   createRenderer();
   Logger.debug('Creating scene.');
@@ -1668,13 +1668,13 @@ function initialise(inputGifFile) {
       gifData.width = images[i].width;
       gifData.height = images[i].height;
 
-      console.log('gifData.width =',gifData.width);
-      console.log('gifData.height =',gifData.height);
+      //console.log('gifData.width =',gifData.width);
+      //console.log('gifData.height =',gifData.height);
       //console.log('images[i] =',images[i]);
 
       // Make space for extra alpha channel
       var fullData =  new Uint8Array(gifData.width*gifData.height*3);
-      Logger.debug('fullData length=',fullData.length);
+      //Logger.debug('fullData length=',fullData.length);
 
       var pixelIndex = 0;
       // Populate full data set
@@ -1695,11 +1695,11 @@ function initialise(inputGifFile) {
       //var r = gifData.frames[frame][sy*gifData.width + sx + 0];///255.0;
 
       //Logger.debug("pixel.data =", images[i].data);
-      Logger.debug("Stored frames =", gifData.frames.length);
+      //Logger.debug("Stored frames =", gifData.frames.length);
     }
 
     Logger.debug('Initializing export gif.');
-    initExportGif('render.gif');
+    initExportGif(outputGifFile);
 
     var program = renderer.buildProgram(scene.lights.length);
     //Logger.debug(program);
@@ -2645,8 +2645,8 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   yMin = Number.POSITIVE_INFINITY;
   yMax = Number.NEGATIVE_INFINITY;
 
-  // This needs to be double the resolution of the gif
-  var cols=100, rows=100;
+
+  var cols=50, rows=50;
   var gx,  gy;
 
   var triangleStripArray = new Array();
@@ -2655,8 +2655,8 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   var vertixy = new Float32Array(rows*cols);
   var vertixz = new Float32Array(rows*cols);
 
-  gx=80;
-  gy=80;
+  gx=128;
+  gy=128;
 	gheight=25;
 
 	var i=0, j=0;
@@ -2711,8 +2711,8 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
 	for (var row =0; row<rows; row++) {
 	   for (var col=0; col<cols; col++) {
 
-      vertixx[j]=(gx*col);//+ax;
-			vertixy[j]=(gy*row);//+ay;
+      vertixx[j]=(gx*col) + getRandomArbitrary(0, impulseLevel);
+			vertixy[j]=(gy*row) + getRandomArbitrary(0, impulseLevel);
       vertixz[j] = 100+az;
 
       if (vertixx[j] < xMin) {
@@ -3247,8 +3247,8 @@ Mousetrap.bind('space', function() {
 });
 */
 
-function loadLib(inputFile) {
-  initialise(inputFile);
+function loadLib(inputFile, outputFile) {
+  initialise(inputFile, outputFile);
 }
 exports.loadLib = loadLib;
 

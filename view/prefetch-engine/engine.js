@@ -46,25 +46,8 @@ var request = require('request');
 // Include the public functions from 'libs.js'
 var libs = require('./libs.js');
 
-var corelib = libs.corelib;
-console.log('Available export methods: ', corelib);
 
-var inputFile = 'test.gif';
-console.log('Loading lib with', inputFile);
-corelib.loadLib(inputFile);
-
-//console.log('Available export methods: ', corelib);
-
-//var vertex = new libs.FSS.Vertex(0, 0, 0);
-/*
-function testLoad() {
-  //libs.serverMethod1();
-  // Call lib method
-  var a = new libs.FSS.Color();
-}
-
-testLoad();
-*/
+var imgNum = 0;
 
 function fetchGifURL(keyword) {
   console.log('Fetching gif url for keyword: ', keyword);
@@ -80,12 +63,21 @@ function fetchGifURL(keyword) {
           var urlData = JSON.parse(body).data.image_url;
           console.log(keyword + ', URL = ' + urlData);
           storeURL(keyword, urlData);
+
+          var inputFile = urlData;
+          console.log('Loading lib with', inputFile);
+          var imgFile = imgNum + '-img.gif';
+          imgNum++;
+          var corelib = libs.corelib;
+          console.log('Available export methods: ', corelib);
+          corelib.loadLib(inputFile,imgFile);
+
           //console.log('data = ', data);
         }
   });
 }
 
-var loadKeywords = function(req, res) {
+var loadKeywords = function(res) {
     console.log('Loading keywords from database.');
 
     var sqltext = 'SELECT KEYWORD FROM MM_CONTROL';
@@ -112,7 +104,9 @@ var loadKeywords = function(req, res) {
 
         	query.on('end', function(result) {
         		console.log(result.rowCount + ' rows were received.');
-        		res.send('[Monkey Maya Service] keywords received ' + keywords.length);
+            if (res) {
+        		    res.send('[Monkey Maya Service] keywords received ' + keywords.length);
+            }
 
             for (var i = 0; i < keywords.length; i++) {
               fetchGifURL(keywords[i]);
@@ -120,6 +114,11 @@ var loadKeywords = function(req, res) {
         	});
         }
       })
+
+
+      // Load next set also
+      loadNextSet();
+
 }
 
 var loadNextSet = function() {
@@ -153,16 +152,36 @@ var storeURL = function(keyword, url) {
     //console.log(gifCache);
 }
 
+
+
+// Load keywords
+loadKeywords(null);
+
+
+//console.log('Available export methods: ', corelib);
+
+//var vertex = new libs.FSS.Vertex(0, 0, 0);
+/*
+function testLoad() {
+  //libs.serverMethod1();
+  // Call lib method
+  var a = new libs.FSS.Color();
+}
+
+testLoad();
+*/
+
+
+
 app.get('/', function (req, res) {
 //# res.send('Monkey Maya Service!')
-  loadKeywords(req, res);
+  loadKeywords(res);
 })
 
 app.get('/list', function (req, res) {
 //# res.send('Monkey Maya Service!')
   loadNextSet();
 })
-
 
 app.get('/events', function (req, res) {
 res.send('Events')

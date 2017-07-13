@@ -36,7 +36,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var bufferHeight = 1024;
 
   var frameCount = 0;
-  var frameLimit = 5;
+  var frameLimit = 75;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -62,7 +62,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var zoomIn = true;
   var maxScale = 2.5;
 
-  var impulseLevel = 20;
+  var impulseLevel = 25;
 
   var gifData = {
     frames: [],
@@ -1646,7 +1646,7 @@ var webglRenderer;
 //------------------------------
 // Methods
 //------------------------------
-function initialise(inputGifFile, outputGifFile) {
+function initialise() {
   Logger.debug('Creating renderer.');
   createRenderer();
   Logger.debug('Creating scene.');
@@ -1656,11 +1656,13 @@ function initialise(inputGifFile, outputGifFile) {
   Logger.debug('Adding lights.');
   addLights();
   resize(bufferWidth, bufferHeight);
+}
+
+function generateScene(inputGifFile, callback) {
 
   Logger.debug('Retrieving gif =',inputGifFile);
 
-  //var gif= 'https://59naga.github.io/fixtures/animated.GIF';
-  pixel.parse(inputGifFile).then(function(images){
+  pixel.parse(inputGifFile).then(function(images) {
     console.log(images.loopCount); // 0(Infinite)
     for (var i = 0; i < images.length; i++) {
       //Logger.debug("Stored frames =", gifData.frames.length);
@@ -1698,35 +1700,19 @@ function initialise(inputGifFile, outputGifFile) {
       //Logger.debug("Stored frames =", gifData.frames.length);
     }
 
+    // Invoke callback
+    callback();
+  });
+}
+
+
+  function exportScene(outputGifFile) {
     Logger.debug('Initializing export gif.');
     initExportGif(outputGifFile);
 
     var program = renderer.buildProgram(scene.lights.length);
     //Logger.debug(program);
-  });
-
-/*
-  getPixels(inputGifFile, function(err, pixels) {
-    if(err) {
-      Logger.debug("Bad image path");
-      return;
-    }
-    //Logger.debug("pixel data", pixels.data);
-    Logger.debug("Input gif width =", pixels.shape[1]);
-    Logger.debug("Input gif height =", pixels.shape[2]);
-    gifData.width = pixels.shape[1];
-    gifData.height = pixels.shape[2];
-    //[numFrames, width, height, 4]
-    gifData.frames.push(pixels.data);
-    Logger.debug("Stored frames =", gifData.frames.length);
-
-    Logger.debug('Initializing export gif.');
-    initExportGif('render.gif');
-
-    var program = renderer.buildProgram(scene.lights.length);
-    //Logger.debug(program);
-  });*/
-}
+  }
 
 function createRenderer() {
   webglRenderer = new FSS.WebGLRenderer(gl);
@@ -1868,7 +1854,7 @@ function processFrame(program) {
   // Clear context
   renderer.clear();
 
-  createMesh();
+  //createMesh();
 
   //if (frameCount % 0 == 0) {
     // Calculate and render visualizations
@@ -2306,8 +2292,8 @@ var frame = 0;
     // 16 faces = 16 x 2 triangles = 32
 //    gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
 
-gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
-//gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
+//gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
+gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
 
     //   	gl.drawArrays(gl.TRIANGLES, 0, 16*6);
 /*
@@ -2646,7 +2632,7 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   yMax = Number.NEGATIVE_INFINITY;
 
 
-  var cols=50, rows=50;
+  var cols=75, rows=75;
   var gx,  gy;
 
   var triangleStripArray = new Array();
@@ -2711,8 +2697,8 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
 	for (var row =0; row<rows; row++) {
 	   for (var col=0; col<cols; col++) {
 
-      vertixx[j]=(gx*col) + getRandomArbitrary(0, impulseLevel);
-			vertixy[j]=(gy*row) + getRandomArbitrary(0, impulseLevel);
+      vertixx[j]=(gx*col) + getRandomArbitrary(0, impulseLevel)*1.4;
+			vertixy[j]=(gy*row) + getRandomArbitrary(0, impulseLevel)*1.4;
       vertixz[j] = 100+az;
 
       if (vertixx[j] < xMin) {
@@ -3247,9 +3233,13 @@ Mousetrap.bind('space', function() {
 });
 */
 
-function loadLib(inputFile, outputFile) {
-  initialise(inputFile, outputFile);
+function loadLib() {
+  initialise();
 }
+
 exports.loadLib = loadLib;
+exports.generateScene = generateScene;
+exports.exportScene = exportScene;
+
 
 })();

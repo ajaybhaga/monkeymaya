@@ -45,9 +45,11 @@ var request = require('request');
 
 // Include the public functions from 'libs.js'
 var libs = require('./libs.js');
-
-
+var corelib = libs.corelib;
+console.log('Available export methods: ', corelib);
+corelib.loadLib();
 var imgNum = 0;
+var genNum = 0;
 
 function fetchGifURL(keyword) {
   console.log('Fetching gif url for keyword: ', keyword);
@@ -66,11 +68,31 @@ function fetchGifURL(keyword) {
 
           var inputFile = urlData;
           console.log('Loading lib with', inputFile);
-          var imgFile = imgNum + '-img.gif';
           imgNum++;
-          var corelib = libs.corelib;
-          console.log('Available export methods: ', corelib);
-          corelib.loadLib(inputFile,imgFile);
+
+          //if (imgNum == 1) {
+            corelib.generateScene(inputFile, function() {
+              genNum++;
+
+              // imgNum = 10
+              // genNum = 9
+              // itemsLeft = 1
+
+              // p = ||||||
+
+              var itemsLeft = (imgNum-genNum);
+              var pText = itemsLeft + ' item(s) left to generate.';
+              console.log('Generated scene: ' + pText);
+
+              if (itemsLeft == 0) {
+                console.log('All items generated.');
+                var outputGifFile = "render.gif";
+                corelib.exportScene(outputGifFile)
+              }
+
+            });
+
+          //}
 
           //console.log('data = ', data);
         }
@@ -118,7 +140,6 @@ var loadKeywords = function(res) {
 
       // Load next set also
       loadNextSet();
-
 }
 
 var loadNextSet = function() {

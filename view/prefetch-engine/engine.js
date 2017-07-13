@@ -139,7 +139,7 @@ var loadKeywords = function(res) {
 
 
       // Load next set also
-      loadNextSet();
+      //loadNextSet();
 }
 
 var loadNextSet = function() {

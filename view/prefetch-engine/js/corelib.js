@@ -36,7 +36,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var bufferHeight = 1024;
 
   var frameCount = 0;
-  var frameLimit = 75;
+  var frameLimit = 400;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -1155,7 +1155,7 @@ FSS.WebGLRenderer.prototype.clear = function() {
   return this;
 };
 
-FSS.WebGLRenderer.prototype.render = function(scene, program, callback) {
+FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe, callback) {
   FSS.Renderer.prototype.render.call(this, scene);
   Logger.debug('WebGLRenderer render @', getDateTime());
 
@@ -1181,7 +1181,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, callback) {
   //setColors(gl);
 
   // Draw scene
-  drawScene(this, callback);
+  drawScene(this, wireframe, callback);
 
   return this;
 };
@@ -1201,7 +1201,7 @@ FSS.WebGLRenderer.prototype.setBufferData = function(index, buffer, value) {
  * Concepts taken from three.js WebGLRenderer
  * @see https://github.com/mrdoob/three.js/blob/master/src/renderers/WebGLRenderer.js
  */
-FSS.WebGLRenderer.prototype.buildProgram = function(lights) {
+FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
   if (this.unsupported) return;
 
   Logger.debug('WebGLRenderer building program @', getDateTime());
@@ -1270,8 +1270,9 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights) {
 
   //Logger.debug('Using program,', this.program);
 
+  var wireframe = false;
   Logger.debug('Starting rendering process.');
-  processFrame(program);
+  processFrame(program, wireframe);
 
   // Return the program
   return program;
@@ -1667,8 +1668,9 @@ function generateScene(inputGifFile, callback) {
     for (var i = 0; i < images.length; i++) {
       //Logger.debug("Stored frames =", gifData.frames.length);
 
-      gifData.width = images[i].width;
-      gifData.height = images[i].height;
+      gifData.width = Math.max(gifData.width, images[i].width);
+      gifData.height = Math.max(gifData.height, images[i].height);
+
 
       //console.log('gifData.width =',gifData.width);
       //console.log('gifData.height =',gifData.height);
@@ -1706,11 +1708,11 @@ function generateScene(inputGifFile, callback) {
 }
 
 
-  function exportScene(outputGifFile) {
+  function exportScene(outputGifFile, wireframe) {
     Logger.debug('Initializing export gif.');
     initExportGif(outputGifFile);
 
-    var program = renderer.buildProgram(scene.lights.length);
+    var program = renderer.buildProgram(scene.lights.length, wireframe);
     //Logger.debug(program);
   }
 
@@ -1836,7 +1838,7 @@ function dhm(t){
 /**
 * Main Frame Loop
 */
-function processFrame(program) {
+function processFrame(program, wireframe) {
   frameCount++;
 
   var frame = frameCount;
@@ -1860,7 +1862,7 @@ function processFrame(program) {
     // Calculate and render visualizations
   //  mesh.update(renderer, scene.lights, true);
     update(impulse);
-    render(program, function() {
+    render(program, wireframe, function() {
 
       //gl.flush();
       Logger.debug('[' + frame + '] Frame rendering completed @', getDateTime());
@@ -1930,7 +1932,7 @@ function processFrame(program) {
       lastFrameRenderTime = currentTime;
 
       // Continue loop to next frame
-      requestAnimationFrame(processFrame(program));
+      requestAnimationFrame(processFrame(program, wireframe));
     });
   //}
 
@@ -2019,8 +2021,8 @@ function update(vibFactor) {
   geometry.dirty = true;
 }
 
-function render(program, callback) {
-  renderer.render(scene, program, callback);
+function render(program, wireframe, callback) {
+  renderer.render(scene, program, wireframe, callback);
 }
 
 function getRandomColor(){
@@ -2199,7 +2201,7 @@ var frame = 0;
 
 
   // Draw the scene.
-  function drawScene(renderer, callback) {
+  function drawScene(renderer, wireframe, callback) {
 
     var m, mesh, t, tl, triangle, l, light,
         attribute, uniform, buffer, data, location,
@@ -2291,9 +2293,12 @@ var frame = 0;
 //   	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // 16 faces = 16 x 2 triangles = 32
 //    gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
+  if (wireframe) {
+    gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
+  } else {
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
 
-//gl.drawArrays(gl.TRIANGLE_STRIP, 0, numVertices);
-gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
+  }
 
     //   	gl.drawArrays(gl.TRIANGLES, 0, 16*6);
 /*
@@ -2441,8 +2446,11 @@ gl.drawArrays(gl.LINE_STRIP, 0, numVertices);
 
   // Set the matrix.
   gl.uniformMatrix4fv(matrixLocation, false, matrix);
-  Logger.debug('matrix=', matrix);
+  //Logger.debug('matrix=', matrix);
 
+  // Update frame limit
+  frameLimit = gifData.frames.length;
+  Logger.debug('Total gifData.frames=', gifData.frames.length);
 
   Logger.debug('gl errors=',gl.getError());
 

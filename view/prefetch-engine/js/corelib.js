@@ -66,8 +66,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 
   var gifData = {
     frames: [],
-    width: 0,
-    height: 0
+    widths: [],
+    heights: []
   }
 
   // Log messages will be written to the window's console.
@@ -1491,9 +1491,7 @@ function getTriangleColor(centroidX, centroidY, bBox, frame) {
   //Logger.debug('getTriangleColor -> bBox=',bBox);
 
   // Use gif color if loaded
-  if (gifData.width != 0) {
-
-
+  if (gifData.frames.length > 0) {
 
     ///var sx = Math.floor( img.canvas.width * (box.x + box.width/2) / svg.width );
     //var sy = Math.floor( img.canvas.height * (box.y + box.height/2) / svg.height );
@@ -1516,15 +1514,15 @@ function getTriangleColor(centroidX, centroidY, bBox, frame) {
 
     //Logger.debug('bBox[0]=',bBox[0],'bBox[1]=',bBox[1],'bBox[1]-bBox[0]=',bBox[1]-bBox[0]);
 
-    var sx = Math.floor(gifData.width * (x / (bBox[1]-bBox[0])));
-    var sy = Math.floor(gifData.height * (y / (bBox[3]-bBox[2])));
+    var sx = Math.floor(gifData.widths[frame] * (x / (bBox[1]-bBox[0])));
+    var sy = Math.floor(gifData.heights[frame] * (y / (bBox[3]-bBox[2])));
   //  Logger.debug('sx =',sx);
   //  Logger.debug('sy =',sy);
 
 //  Logger.debug('x=',x,',y=',y,'sx=',sx,'sy=',sy);
 
 
-    var iy = gifData.height-sy;
+    var iy = gifData.heights[frame]-sy;
 //    Logger.debug('gifData.width=',gifData.width,'gifData.height=',gifData.height);
   //  Logger.debug('sx=',sx,'sy=',sy);
 //    Logger.debug('sx=',sx,'sy=',sy);
@@ -1668,8 +1666,8 @@ function generateScene(inputGifFile, callback) {
     for (var i = 0; i < images.length; i++) {
       //Logger.debug("Stored frames =", gifData.frames.length);
 
-      gifData.width = Math.max(gifData.width, images[i].width);
-      gifData.height = Math.max(gifData.height, images[i].height);
+      gifData.widths.push(images[i].width);
+      gifData.heights.push(images[i].height);
 
 
       //console.log('gifData.width =',gifData.width);
@@ -1677,7 +1675,7 @@ function generateScene(inputGifFile, callback) {
       //console.log('images[i] =',images[i]);
 
       // Make space for extra alpha channel
-      var fullData =  new Uint8Array(gifData.width*gifData.height*3);
+      var fullData =  new Uint8Array(gifData.widths[i]*gifData.heights[i]*3);
       //Logger.debug('fullData length=',fullData.length);
 
       var pixelIndex = 0;
@@ -2796,44 +2794,44 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
     //       getTriangleColor()
     //getTriangleColor(px, py, vertexFieldBBox, frame);
     //rgb = [255,0,100];
-    var sx = Math.floor(gifData.width * (px / (vertexFieldBBox[1]-vertexFieldBBox[0])));
-    var sy = Math.floor(gifData.height * (py / (vertexFieldBBox[3]-vertexFieldBBox[2])));
+    var sx = Math.floor(gifData.widths[frame] * (px / (vertexFieldBBox[1]-vertexFieldBBox[0])));
+    var sy = Math.floor(gifData.heights[frame] * (py / (vertexFieldBBox[3]-vertexFieldBBox[2])));
     //var rgb = [sx*8 % 255,0.0,sy*8 % 255];
 
-    var iy = gifData.height-sy;
+    var iy = gifData.heights[frame]-sy;
 
     //Logger.debug('sx=',sx,'sy=',sy);
 
     var rgb = [
       // Red
-      (gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx-1)*3) + 0]
-      + gifData.frames[frame][(iy-1)*(gifData.width*3) + (sx*3) + 0]
-      + gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx+1)*3) + 0]
-      + gifData.frames[frame][iy*(gifData.width*3) + ((sx+1)*3) + 0]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx+1)*3) + 0]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + (sx*3) + 0]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx-1)*3) + 0]
-      + gifData.frames[frame][iy*(gifData.width*3) + ((sx-1)*3) + 0])/8,
+      (gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + ((sx-1)*3) + 0]
+      + gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + (sx*3) + 0]
+      + gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + ((sx+1)*3) + 0]
+      + gifData.frames[frame][iy*(gifData.widths[frame]*3) + ((sx+1)*3) + 0]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + ((sx+1)*3) + 0]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + (sx*3) + 0]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + ((sx-1)*3) + 0]
+      + gifData.frames[frame][iy*(gifData.widths[frame]*3) + ((sx-1)*3) + 0])/8,
 
       // Green
-      (gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx-1)*3) + 1]
-      + gifData.frames[frame][(iy-1)*(gifData.width*3) + (sx*3) + 1]
-      + gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx+1)*3) + 1]
-      + gifData.frames[frame][iy*(gifData.width*3) + ((sx+1)*3) + 1]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx+1)*3) + 1]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + (sx*3) + 1]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx-1)*3) + 1]
-      + gifData.frames[frame][iy*(gifData.width*3) + ((sx-1)*3) + 1])/8,
+      (gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + ((sx-1)*3) + 1]
+      + gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + (sx*3) + 1]
+      + gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + ((sx+1)*3) + 1]
+      + gifData.frames[frame][iy*(gifData.widths[frame]*3) + ((sx+1)*3) + 1]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + ((sx+1)*3) + 1]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + (sx*3) + 1]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + ((sx-1)*3) + 1]
+      + gifData.frames[frame][iy*(gifData.widths[frame]*3) + ((sx-1)*3) + 1])/8,
 
       // Blue
-      (gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx-1)*3) + 2]
-      + gifData.frames[frame][(iy-1)*(gifData.width*3) + (sx*3) + 2]
-      + gifData.frames[frame][(iy-1)*(gifData.width*3) + ((sx+1)*3) + 2]
-      + gifData.frames[frame][iy*(gifData.width*3) + ((sx+1)*3) + 2]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx+1)*3) + 2]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + (sx*3) + 2]
-      + gifData.frames[frame][(iy+1)*(gifData.width*3) + ((sx-1)*3) + 2]
-      + gifData.frames[frame][iy*(gifData.width*3) + ((sx-1)*3) + 2])/8
+      (gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + ((sx-1)*3) + 2]
+      + gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + (sx*3) + 2]
+      + gifData.frames[frame][(iy-1)*(gifData.widths[frame]*3) + ((sx+1)*3) + 2]
+      + gifData.frames[frame][iy*(gifData.widths[frame]*3) + ((sx+1)*3) + 2]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + ((sx+1)*3) + 2]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + (sx*3) + 2]
+      + gifData.frames[frame][(iy+1)*(gifData.widths[frame]*3) + ((sx-1)*3) + 2]
+      + gifData.frames[frame][iy*(gifData.widths[frame]*3) + ((sx-1)*3) + 2])/8
   ];
 
 

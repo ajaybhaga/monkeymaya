@@ -102,7 +102,7 @@ function fetchGifURL(keyword) {
 var loadKeywords = function(res) {
     console.log('Loading keywords from database.');
 
-    var sqltext = 'SELECT KEYWORD FROM MM_CONTROL';
+    var sqltext = 'SELECT KEYWORD FROM MM_CONTROL WHERE KEYWORD = \'crazy\'';
     pg.connect(conString, function(err, client, done) {
         if(err) {
             console.error('error fetching client from pool', err);

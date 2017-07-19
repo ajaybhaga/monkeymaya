@@ -185,14 +185,14 @@ var storeURL = function(keyword, url) {
 //loadKeywords(null);
 // Manual keyword
 var keyword = 'blissful';
-keywords.push('blissful');
+/*keywords.push('blissful');
 keywords.push('dreamy');
 keywords.push('defeated');
 keywords.push('furious');
 keywords.push('psychedelic');
 keywords.push('sexy');
 keywords.push('seductive');
-keywords.push('euphoric');
+keywords.push('euphoric');*/
 keywords.push('raging');
 keywords.push('vibrant');
 

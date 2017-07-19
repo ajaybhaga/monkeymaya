@@ -1204,84 +1204,84 @@ FSS.WebGLRenderer.prototype.setBufferData = function(index, buffer, value) {
  * @see https://github.com/mrdoob/three.js/blob/master/src/renderers/WebGLRenderer.js
  */
 FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
-  if (this.unsupported) return;
 
+    if (this.unsupported) return;
 
-  frameCount = 0;
+    frameCount = 0;
 
-  Logger.debug('WebGLRenderer building program @', getDateTime());
+    Logger.debug('WebGLRenderer building program @', getDateTime());
 
-  // Create shader source
-  var vs = FSS.WebGLRenderer.VS(lights);
-  var fs = FSS.WebGLRenderer.FS(lights);
+    // Create shader source
+    var vs = FSS.WebGLRenderer.VS(lights);
+    var fs = FSS.WebGLRenderer.FS(lights);
 
-  // Derive the shader fingerprint
-  var code = vs + fs;
+    // Derive the shader fingerprint
+    var code = vs + fs;
 
-  //Logger.debug('Creating program=',code);
+    //Logger.debug('Creating program=',code);
 
-  // Check if the program has already been compiled
-  //if (!!this.program && this.program.code === code) {
-//  /} else {
+    // Check if the program has already been compiled
+    //if (!!this.program && this.program.code === code) {
+  //  /} else {
 
-    // Create the program and shaders
-    var program = this.gl.createProgram();
-    var vertexShader = this.buildShader(this.gl.VERTEX_SHADER, vs);
-    var fragmentShader = this.buildShader(this.gl.FRAGMENT_SHADER, fs);
+      // Create the program and shaders
+      var program = this.gl.createProgram();
+      var vertexShader = this.buildShader(this.gl.VERTEX_SHADER, vs);
+      var fragmentShader = this.buildShader(this.gl.FRAGMENT_SHADER, fs);
 
-    // Attach an link the shader
-    this.gl.attachShader(program, vertexShader);
-    this.gl.attachShader(program, fragmentShader);
-    this.gl.linkProgram(program);
+      // Attach an link the shader
+      this.gl.attachShader(program, vertexShader);
+      this.gl.attachShader(program, fragmentShader);
+      this.gl.linkProgram(program);
 
-    // Add error handling
-    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-      var error = this.gl.getError();
-      var status = this.gl.getProgramParameter(program, this.gl.VALIDATE_STATUS);
-      console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
-      return null;
-    }
+      // Add error handling
+      if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+        var error = this.gl.getError();
+        var status = this.gl.getProgramParameter(program, this.gl.VALIDATE_STATUS);
+        console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
+        return null;
+      }
 
-    // Delete the shader
-    this.gl.deleteShader(fragmentShader);
-    this.gl.deleteShader(vertexShader);
+      // Delete the shader
+      this.gl.deleteShader(fragmentShader);
+      this.gl.deleteShader(vertexShader);
 
-    // Set the program code
-    program.code = code;
+      // Set the program code
+      program.code = code;
 
-    // Add the program attributes
-    program.attributes = {
-      //side:     this.buildBuffer(program, 'attribute', 'aSide',     1, 'f' ),
-      position: this.buildBuffer(program, 'attribute', 'aPosition', 3, 'v3'),
-      //centroid: this.buildBuffer(program, 'attribute', 'aCentroid', 3, 'v3'),
-      //normal:   this.buildBuffer(program, 'attribute', 'aNormal',   3, 'v3'),
-      //ambient:  this.buildBuffer(program, 'attribute', 'aAmbient',  4, 'v4'),
-      //diffuse:  this.buildBuffer(program, 'attribute', 'aDiffuse',  4, 'v4')
-    };
+      // Add the program attributes
+      program.attributes = {
+        //side:     this.buildBuffer(program, 'attribute', 'aSide',     1, 'f' ),
+        position: this.buildBuffer(program, 'attribute', 'aPosition', 3, 'v3'),
+        //centroid: this.buildBuffer(program, 'attribute', 'aCentroid', 3, 'v3'),
+        //normal:   this.buildBuffer(program, 'attribute', 'aNormal',   3, 'v3'),
+        //ambient:  this.buildBuffer(program, 'attribute', 'aAmbient',  4, 'v4'),
+        //diffuse:  this.buildBuffer(program, 'attribute', 'aDiffuse',  4, 'v4')
+      };
 
-    // Add the program uniforms
-    program.uniforms = {
-  //    resolution:    this.buildBuffer(program, 'uniform', 'uResolution',    3, '3f',  1     ),
-      //lightPosition: this.buildBuffer(program, 'uniform', 'uLightPosition', 3, '3fv', lights),
-      //lightAmbient:  this.buildBuffer(program, 'uniform', 'uLightAmbient',  4, '4fv', lights),
-      //lightDiffuse:  this.buildBuffer(program, 'uniform', 'uLightDiffuse',  4, '4fv', lights),
-      //matrix:        this.buildBuffer(program, 'uniform', 'uMatrix',  16, '4m')
-    };
+      // Add the program uniforms
+      program.uniforms = {
+    //    resolution:    this.buildBuffer(program, 'uniform', 'uResolution',    3, '3f',  1     ),
+        //lightPosition: this.buildBuffer(program, 'uniform', 'uLightPosition', 3, '3fv', lights),
+        //lightAmbient:  this.buildBuffer(program, 'uniform', 'uLightAmbient',  4, '4fv', lights),
+        //lightDiffuse:  this.buildBuffer(program, 'uniform', 'uLightDiffuse',  4, '4fv', lights),
+        //matrix:        this.buildBuffer(program, 'uniform', 'uMatrix',  16, '4m')
+      };
 
-    // Set the renderer program
-    this.program = program;
+      // Set the renderer program
+      this.program = program;
 
-    // Enable program
-    this.gl.useProgram(this.program);
-//}
-  //Logger.debug('Using program,', this.program);
+      // Enable program
+      this.gl.useProgram(this.program);
+  //}
+    //Logger.debug('Using program,', this.program);
 
-  var wireframe = false;
-  Logger.debug('Starting rendering process.');
-  processFrame(program, wireframe);
+    var wireframe = false;
+    Logger.debug('Starting rendering process.');
+    return processFrame(program, wireframe);
 
-  // Return the program
-  return program;
+    // Return the program
+    //return program;
 };
 
 FSS.WebGLRenderer.prototype.buildShader = function(type, source) {
@@ -1688,77 +1688,76 @@ function progressBar(text, total, i) {
 
 function loadGif(inputGifFile, keyword) {
 
-  pixel.parse(inputGifFile).then(function(images) {
-    console.log(images.loopCount); // 0(Infinite)
-    for (var i = 0; i < images.length; i++) {
-      //Logger.debug("Stored frames =", gifData.frames.length);
+  return Q.fcall(function () {
 
-      gifData.widths.push(images[i].width);
-      gifData.heights.push(images[i].height);
+    pixel.parse(inputGifFile).then(function(images) {
+      console.log(images.loopCount); // 0(Infinite)
+      for (var i = 0; i < images.length; i++) {
+        //Logger.debug("Stored frames =", gifData.frames.length);
+
+        gifData.widths.push(images[i].width);
+        gifData.heights.push(images[i].height);
 
 
-      //console.log('gifData.width =',gifData.width);
-      //console.log('gifData.height =',gifData.height);
-      //console.log('images[i] =',images[i]);
+        //console.log('gifData.width =',gifData.width);
+        //console.log('gifData.height =',gifData.height);
+        //console.log('images[i] =',images[i]);
 
-      // Make space for extra alpha channel
-      var fullData =  new Uint8Array(gifData.widths[i]*gifData.heights[i]*3);
-      //Logger.debug('fullData length=',fullData.length);
+        // Make space for extra alpha channel
+        var fullData =  new Uint8Array(gifData.widths[i]*gifData.heights[i]*3);
+        //Logger.debug('fullData length=',fullData.length);
 
-      var pixelIndex = 0;
-      // Populate full data set
-      for (var j = 0; j < fullData.length; j += 3) {
-        fullData[j] = images[i].data[pixelIndex];
-        fullData[j+1] = images[i].data[pixelIndex+1];
-        fullData[j+2] = images[i].data[pixelIndex+2];
-        pixelIndex += 4;
-//        images[i].data[j] = 0; //getRandomArbitrary(1,255);
-//        images[i].data[j+1] = 255;//getRandomArbitrary(1,255);
-  //      images[i].data[j+2] = 0;//getRandomArbitrary(1,255);
+        var pixelIndex = 0;
+        // Populate full data set
+        for (var j = 0; j < fullData.length; j += 3) {
+          fullData[j] = images[i].data[pixelIndex];
+          fullData[j+1] = images[i].data[pixelIndex+1];
+          fullData[j+2] = images[i].data[pixelIndex+2];
+          pixelIndex += 4;
+        }
+
+        gifData.frames.push(fullData);
+
+        progressBar('Storing gif data (' + inputGifFile + ')', images.length, i);
       }
 
-
-      //[numFrames, width, height, 4]
-      gifData.frames.push(fullData);
-      //var r = gifData.frames[frame][sy*gifData.width + sx + 0];///255.0;
-
-      //Logger.debug("pixel.data =", images[i].data);
-      //Logger.debug("Stored frames =", gifData.frames.length);
-
-      progressBar('Storing gif data (' + inputGifFile + ')', images.length, i);
-    }
-
-
-    return Q.fcall(function () {
       Logger.debug('Loaded gif data for',inputGifFile);
-      return 0;
-    }).then(function() {
-//          genNum++;
+      console.log('Color palette generated.');
+      var outputGifFile = "render_" + keyword + ".gif";
+
+      return exportScene(outputGifFile, false).then(function() {
+
+  //      return 0;
+  //          genNum++;
+        console.log('Done export.');
+        if (frameCount >= frameLimit) {
+          //initExportGif('render' + frameCount + '.gif');
+          Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
+          finishExportGif();
+        }
 
 
-          // imgNum = 10
-          // genNum = 9
-          // itemsLeft = 1
+            // imgNum = 10
+            // genNum = 9
+            // itemsLeft = 1
 
-          // p = ||||||
+            // p = ||||||
 
-//          if (progressBar('Generated color palette', imgNum, genNum) == 0) {
-            console.log('Color palette generated.');
-            var outputGifFile = "render_" + keyword + ".gif";
-            return exportScene(outputGifFile, false);
-  //        }
+  //          if (progressBar('Generated color palette', imgNum, genNum) == 0) {
+    //        }
 
-        });
+          });
 
+    });
   });
 }
 
 
   function exportScene(outputGifFile, wireframe) {
     Logger.debug('Initializing export gif.');
-    initExportGif(outputGifFile);
-
-    var program = renderer.buildProgram(scene.lights.length, wireframe);
+    return initExportGif(outputGifFile).then(function() {
+      return renderer.buildProgram(scene.lights.length, wireframe);
+    });
     //Logger.debug(program);
   }
 
@@ -1885,28 +1884,29 @@ function dhm(t){
 * Main Frame Loop
 */
 function processFrame(program, wireframe) {
-  frameCount++;
-
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount >= frameLimit) {
-    //initExportGif('render' + frameCount + '.gif');
-    Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
-    finishExportGif();
+  Q.fcall(function () {
+      frameCount++;
 
-  }
+      if (frameCount >= frameLimit) {
+        //initExportGif('render' + frameCount + '.gif');
+        Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
+        finishExportGif();
+      }
 
-  Logger.debug('[' + frame + '] Frame render @', getDateTime());
+      Logger.debug('[' + frame + '] Frame render @', getDateTime());
 
-  // Clear context
-  renderer.clear();
+      // Clear context
+      renderer.clear();
 
-    Q.fcall(function () {
-      update(impulse);
-      render(program, wireframe);
-    }).then(function(result) {
+    })
+    .then(update(impulse))
+    .then(render(program, wireframe))
+    .then(function(result) {
 
+        Logger.debug('Do we get here?');
         // First frame renders black (defect: uncertain why)
         if (skipFirst == 0) {
           skipFirst = 1;
@@ -1959,10 +1959,13 @@ function processFrame(program, wireframe) {
           cz -= cz * 0.5;
         }
 
+        Logger.debug('And here?');
 
         var delta = currentTime-lastFrameRenderTime;
         var deltaTime = dhm(delta);
         Logger.debug('[' + frame + '] Total frame render time:', deltaTime);
+
+        Logger.debug('And here? 2');
 
         // Store render time for next frame
         lastFrameRenderTime = currentTime;
@@ -1973,7 +1976,7 @@ function processFrame(program, wireframe) {
         } else {
 
           // Continue loop to next frame
-          requestAnimationFrame(processFrame(program, wireframe));
+          return requestAnimationFrame(processFrame(program, wireframe));
         }
       });
 
@@ -1983,21 +1986,25 @@ function finishExportGif() {
 
   encoder.finish();
   Logger.debug('Encoding completed.');
-
+  gifData.frames = [];
 }
 
 function initExportGif(filename) {
+  return Q.fcall(function () {
 
-  // stream the results as they are available into myanimated.gif
-  encoder.createReadStream().pipe(fs.createWriteStream(filename));
+    // stream the results as they are available into myanimated.gif
+    encoder.createReadStream().pipe(fs.createWriteStream(filename));
 
-  encoder.start();
-  encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
-  encoder.setDelay(250);  // frame delay in ms
-  encoder.setQuality(10); // image quality. 10 is default.
+    encoder.start();
+    encoder.setRepeat(0);  // 0 for repeat, -1 for no-repeat
+    encoder.setDelay(250);  // frame delay in ms
+    encoder.setQuality(10); // image quality. 10 is default.
 
-  Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
-  Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
+    Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
+    Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
+
+    return 0;
+  });
 }
 
 /**
@@ -2009,14 +2016,18 @@ function initExportGif(filename) {
 var lastTime = 0;
 
 var requestAnimationFrame = function(callback) {
-  if (callback) {
-    Logger.debug('Submitted next frame for rendering.');
-    var currentTime = new Date().getTime();
-    var timeToCall = Math.max(0, 16 - (currentTime - lastTime));
-    var id = setTimeout(function() { callback(currentTime + timeToCall); }, timeToCall);
-    lastTime = currentTime + timeToCall;
-    return id;
-  }
+  return Q.fcall(function () {
+
+    if (callback) {
+      Logger.debug('Submitted next frame for rendering.');
+      var currentTime = new Date().getTime();
+      var timeToCall = Math.max(0, 16 - (currentTime - lastTime));
+      var id = setTimeout(function() { callback(currentTime + timeToCall); }, timeToCall);
+      lastTime = currentTime + timeToCall;
+      return id;
+    }
+
+  });
 };
 
 var cancelAnimationFrame = function(id) {
@@ -2024,30 +2035,38 @@ var cancelAnimationFrame = function(id) {
 };
 
 function update(vibFactor) {
-  var v, vertex, offset = MESH.depth/100;
+  return Q.fcall(function () {
 
-  // Add depth to Vertices
-  for (v = geometry.vertices.length - 1; v >= 0; v--) {
-    vertex = geometry.vertices[v];
-    FSS.Vector3.set(vertex.position, 1, 1, vertex.depth*offset);
-    FSS.Vector3.add(vertex.position, vertex.anchor);
+    var v, vertex, offset = MESH.depth/100;
 
-    var dx =  Math.random()*vibFactor;
-    var dy =  -Math.random()*vibFactor;
-    //x =  vertex.position[0] + dx + 1;//+ Math.random()*width;
-    //y =  vertex.position[1] + dy;//- Math.random()*height;
+    // Add depth to Vertices
+    for (v = geometry.vertices.length - 1; v >= 0; v--) {
+      vertex = geometry.vertices[v];
+      FSS.Vector3.set(vertex.position, 1, 1, vertex.depth*offset);
+      FSS.Vector3.add(vertex.position, vertex.anchor);
 
-    //vertices[i] = [x, y];
-    var delta = FSS.Vector3.create(dx, dy, 0);
-    FSS.Vector3.add(vertex.position, delta);
-  }
+      var dx =  Math.random()*vibFactor;
+      var dy =  -Math.random()*vibFactor;
+      //x =  vertex.position[0] + dx + 1;//+ Math.random()*width;
+      //y =  vertex.position[1] + dy;//- Math.random()*height;
 
-  // Set the Geometry to dirty
-  geometry.dirty = true;
+      //vertices[i] = [x, y];
+      var delta = FSS.Vector3.create(dx, dy, 0);
+      FSS.Vector3.add(vertex.position, delta);
+    }
+
+    // Set the Geometry to dirty
+    geometry.dirty = true;
+
+    Logger.debug('update();');
+  });
 }
 
-function render(program, wireframe, callback) {
-  renderer.render(scene, program, wireframe, callback);
+function render(program, wireframe) {
+  return Q.fcall(function () {
+    Logger.debug('render();');
+    return renderer.render(scene, program, wireframe);
+  });
 }
 
 function getRandomColor(){
@@ -2474,7 +2493,7 @@ var frame = 0;
   //Logger.debug('matrix=', matrix);
 
   // Update frame limit
-  frameLimit = gifData.frames.length;
+  frameLimit = 4;//gifData.frames.length;
   Logger.debug('Total gifData.frames=', gifData.frames.length);
 
   //Logger.debug('gl errors=',gl.getError());

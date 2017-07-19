@@ -43,13 +43,38 @@ var pg = require('pg');
 var http = require('http');
 var request = require('request');
 
+var Q = require('q');
+
 // Include the public functions from 'libs.js'
 var libs = require('./libs.js');
 var corelib = libs.corelib;
-console.log('Available export methods: ', corelib);
+//console.log('Available export methods: ', corelib);
 corelib.loadLib();
 var imgNum = 0;
 var genNum = 0;
+
+function progressBar(text, total, i) {
+  var itemsLeft = (total-i);
+  var pBar = '';
+  var completed = (itemsLeft/total);
+  pBar += '[';
+
+  for (var p = 0; p < 10-Math.round(10*completed);  p++) {
+    pBar += '|';
+  }
+
+  for (var p = 0; p < (10*completed);  p++) {
+    pBar += ' ';
+  }
+  pBar += ']';
+
+  pBar += ' ' + (100-Math.round(100*completed)) + '%';
+
+  var pText =  pBar;
+  Logger.info(text + ': ' + pText);
+
+  return itemsLeft;
+}
 
 function fetchGifURL(keyword) {
   console.log('Fetching gif url for keyword: ', keyword);
@@ -71,27 +96,8 @@ function fetchGifURL(keyword) {
           imgNum++;
 
           //if (imgNum == 1) {
-            corelib.generateScene(inputFile, function() {
-              genNum++;
 
-              // imgNum = 10
-              // genNum = 9
-              // itemsLeft = 1
-
-              // p = ||||||
-
-              var itemsLeft = (imgNum-genNum);
-              var pText = itemsLeft + ' item(s) left to generate.';
-              console.log('Generated scene: ' + pText);
-
-              if (itemsLeft == 0) {
-                console.log('All items generated.');
-                var outputGifFile = "render.gif";
-                corelib.exportScene(outputGifFile)
-              }
-
-            });
-
+          return corelib.loadGif(inputFile, keyword);
           //}
 
           //console.log('data = ', data);
@@ -175,8 +181,34 @@ var storeURL = function(keyword, url) {
 
 
 
-// Load keywords
-loadKeywords(null);
+// Load keywords (from db)
+//loadKeywords(null);
+// Manual keyword
+var keyword = 'blissful';
+keywords.push('blissful');
+keywords.push('dreamy');
+keywords.push('defeated');
+keywords.push('furious');
+keywords.push('psychedelic');
+keywords.push('sexy');
+keywords.push('seductive');
+keywords.push('euphoric');
+keywords.push('raging');
+keywords.push('vibrant');
+
+
+var funcs = [];
+for (var i in keywords) {
+  var keyword = keywords[i];
+  funcs.push(fetchGifURL(keyword));
+}
+
+
+var result = Q(0);
+funcs.forEach(function (f) {
+    result = result.then(f);
+});
+//return result;
 
 
 //console.log('Available export methods: ', corelib);

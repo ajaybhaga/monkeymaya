@@ -76,6 +76,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var GIFEncoder = require('gifencoder');
   var Canvas = require('canvas');
   var fs = require('fs');
+  var Q = require('q');
+
 
   // Create parameters object
   var parameters = {
@@ -1155,9 +1157,9 @@ FSS.WebGLRenderer.prototype.clear = function() {
   return this;
 };
 
-FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe, callback) {
+FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
   FSS.Renderer.prototype.render.call(this, scene);
-  Logger.debug('WebGLRenderer render @', getDateTime());
+  //Logger.debug('WebGLRenderer render @', getDateTime());
 
   if (this.unsupported) return;
 
@@ -1181,7 +1183,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe, callbac
   //setColors(gl);
 
   // Draw scene
-  drawScene(this, wireframe, callback);
+  drawScene(this, wireframe);
 
   return this;
 };
@@ -1204,6 +1206,9 @@ FSS.WebGLRenderer.prototype.setBufferData = function(index, buffer, value) {
 FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
   if (this.unsupported) return;
 
+
+  frameCount = 0;
+
   Logger.debug('WebGLRenderer building program @', getDateTime());
 
   // Create shader source
@@ -1213,61 +1218,62 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
   // Derive the shader fingerprint
   var code = vs + fs;
 
-  Logger.debug('Creating program=',code);
+  //Logger.debug('Creating program=',code);
 
   // Check if the program has already been compiled
-  if (!!this.program && this.program.code === code) return;
+  //if (!!this.program && this.program.code === code) {
+//  /} else {
 
-  // Create the program and shaders
-  var program = this.gl.createProgram();
-  var vertexShader = this.buildShader(this.gl.VERTEX_SHADER, vs);
-  var fragmentShader = this.buildShader(this.gl.FRAGMENT_SHADER, fs);
+    // Create the program and shaders
+    var program = this.gl.createProgram();
+    var vertexShader = this.buildShader(this.gl.VERTEX_SHADER, vs);
+    var fragmentShader = this.buildShader(this.gl.FRAGMENT_SHADER, fs);
 
-  // Attach an link the shader
-  this.gl.attachShader(program, vertexShader);
-  this.gl.attachShader(program, fragmentShader);
-  this.gl.linkProgram(program);
+    // Attach an link the shader
+    this.gl.attachShader(program, vertexShader);
+    this.gl.attachShader(program, fragmentShader);
+    this.gl.linkProgram(program);
 
-  // Add error handling
-  if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-    var error = this.gl.getError();
-    var status = this.gl.getProgramParameter(program, this.gl.VALIDATE_STATUS);
-    console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
-    return null;
-  }
+    // Add error handling
+    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+      var error = this.gl.getError();
+      var status = this.gl.getProgramParameter(program, this.gl.VALIDATE_STATUS);
+      console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
+      return null;
+    }
 
-  // Delete the shader
-  this.gl.deleteShader(fragmentShader);
-  this.gl.deleteShader(vertexShader);
+    // Delete the shader
+    this.gl.deleteShader(fragmentShader);
+    this.gl.deleteShader(vertexShader);
 
-  // Set the program code
-  program.code = code;
+    // Set the program code
+    program.code = code;
 
-  // Add the program attributes
-  program.attributes = {
-    //side:     this.buildBuffer(program, 'attribute', 'aSide',     1, 'f' ),
-    position: this.buildBuffer(program, 'attribute', 'aPosition', 3, 'v3'),
-    //centroid: this.buildBuffer(program, 'attribute', 'aCentroid', 3, 'v3'),
-    //normal:   this.buildBuffer(program, 'attribute', 'aNormal',   3, 'v3'),
-    //ambient:  this.buildBuffer(program, 'attribute', 'aAmbient',  4, 'v4'),
-    //diffuse:  this.buildBuffer(program, 'attribute', 'aDiffuse',  4, 'v4')
-  };
+    // Add the program attributes
+    program.attributes = {
+      //side:     this.buildBuffer(program, 'attribute', 'aSide',     1, 'f' ),
+      position: this.buildBuffer(program, 'attribute', 'aPosition', 3, 'v3'),
+      //centroid: this.buildBuffer(program, 'attribute', 'aCentroid', 3, 'v3'),
+      //normal:   this.buildBuffer(program, 'attribute', 'aNormal',   3, 'v3'),
+      //ambient:  this.buildBuffer(program, 'attribute', 'aAmbient',  4, 'v4'),
+      //diffuse:  this.buildBuffer(program, 'attribute', 'aDiffuse',  4, 'v4')
+    };
 
-  // Add the program uniforms
-  program.uniforms = {
-//    resolution:    this.buildBuffer(program, 'uniform', 'uResolution',    3, '3f',  1     ),
-    //lightPosition: this.buildBuffer(program, 'uniform', 'uLightPosition', 3, '3fv', lights),
-    //lightAmbient:  this.buildBuffer(program, 'uniform', 'uLightAmbient',  4, '4fv', lights),
-    //lightDiffuse:  this.buildBuffer(program, 'uniform', 'uLightDiffuse',  4, '4fv', lights),
-    //matrix:        this.buildBuffer(program, 'uniform', 'uMatrix',  16, '4m')
-  };
+    // Add the program uniforms
+    program.uniforms = {
+  //    resolution:    this.buildBuffer(program, 'uniform', 'uResolution',    3, '3f',  1     ),
+      //lightPosition: this.buildBuffer(program, 'uniform', 'uLightPosition', 3, '3fv', lights),
+      //lightAmbient:  this.buildBuffer(program, 'uniform', 'uLightAmbient',  4, '4fv', lights),
+      //lightDiffuse:  this.buildBuffer(program, 'uniform', 'uLightDiffuse',  4, '4fv', lights),
+      //matrix:        this.buildBuffer(program, 'uniform', 'uMatrix',  16, '4m')
+    };
 
-  // Set the renderer program
-  this.program = program;
+    // Set the renderer program
+    this.program = program;
 
-  // Enable program
-  this.gl.useProgram(this.program);
-
+    // Enable program
+    this.gl.useProgram(this.program);
+//}
   //Logger.debug('Using program,', this.program);
 
   var wireframe = false;
@@ -1657,9 +1663,30 @@ function initialise() {
   resize(bufferWidth, bufferHeight);
 }
 
-function generateScene(inputGifFile, callback) {
+function progressBar(text, total, i) {
+  var itemsLeft = (total-i);
+  var pBar = '';
+  var completed = (itemsLeft/total);
+  pBar += '[';
 
-  Logger.debug('Retrieving gif =',inputGifFile);
+  for (var p = 0; p < 10-Math.round(10*completed);  p++) {
+    pBar += '|';
+  }
+
+  for (var p = 0; p < (10*completed);  p++) {
+    pBar += ' ';
+  }
+  pBar += ']';
+
+  pBar += ' ' + (100-Math.round(100*completed)) + '%';
+
+  var pText =  pBar;
+  Logger.info(text + ': ' + pText);
+
+  return itemsLeft;
+}
+
+function loadGif(inputGifFile, keyword) {
 
   pixel.parse(inputGifFile).then(function(images) {
     console.log(images.loopCount); // 0(Infinite)
@@ -1693,15 +1720,36 @@ function generateScene(inputGifFile, callback) {
 
       //[numFrames, width, height, 4]
       gifData.frames.push(fullData);
-
       //var r = gifData.frames[frame][sy*gifData.width + sx + 0];///255.0;
 
       //Logger.debug("pixel.data =", images[i].data);
       //Logger.debug("Stored frames =", gifData.frames.length);
+
+      progressBar('Storing gif data (' + inputGifFile + ')', images.length, i);
     }
 
-    // Invoke callback
-    callback();
+
+    return Q.fcall(function () {
+      Logger.debug('Loaded gif data for',inputGifFile);
+      return 0;
+    }).then(function() {
+//          genNum++;
+
+
+          // imgNum = 10
+          // genNum = 9
+          // itemsLeft = 1
+
+          // p = ||||||
+
+//          if (progressBar('Generated color palette', imgNum, genNum) == 0) {
+            console.log('Color palette generated.');
+            var outputGifFile = "render_" + keyword + ".gif";
+            return exportScene(outputGifFile, false);
+  //        }
+
+        });
+
   });
 }
 
@@ -1842,11 +1890,11 @@ function processFrame(program, wireframe) {
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  if (frameCount > frameLimit) {
+  if (frameCount >= frameLimit) {
+    //initExportGif('render' + frameCount + '.gif');
     Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
     finishExportGif();
-    //initExportGif('render' + frameCount + '.gif');
-    return;
+
   }
 
   Logger.debug('[' + frame + '] Frame render @', getDateTime());
@@ -1854,101 +1902,80 @@ function processFrame(program, wireframe) {
   // Clear context
   renderer.clear();
 
-  //createMesh();
+    Q.fcall(function () {
+      update(impulse);
+      render(program, wireframe);
+    }).then(function(result) {
 
-  //if (frameCount % 0 == 0) {
-    // Calculate and render visualizations
-  //  mesh.update(renderer, scene.lights, true);
-    update(impulse);
-    render(program, wireframe, function() {
+        // First frame renders black (defect: uncertain why)
+        if (skipFirst == 0) {
+          skipFirst = 1;
+        } else {
 
-      //gl.flush();
-      Logger.debug('[' + frame + '] Frame rendering completed @', getDateTime());
+          //Logger.debug('[' + frame + '] Frame export @', getDateTime());
+          // Read pixels from gl buffer
+          var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
+          gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-      // First frame renders black (defect: uncertain why)
-      if (skipFirst == 0) {
-        skipFirst = 1;
-      } else {
+          //Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
+          // Write out the image into memory
+          encoder.addFrame(pixels);
 
-        Logger.debug('[' + frame + '] Frame export @', getDateTime());
-        // Read pixels from gl buffer
-        var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
-        gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        }
 
-        Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
-        // Write out the image into memory
-        encoder.addFrame(pixels);
+        // Apply physics
+        impulse -= impulse * 0.5;
+        if (impulse < 0) {
+          impulse = 0;
+        }
 
-      }
+        if (ax > 0) {
+          ax -= ax * 0.5;
+        } else {
+          ax += ax * 0.5;
+        }
 
-      /*finishExportGif();
-      Logger.debug('Initializing export gif.');
-      initExportGif('render' + frameCount + '.gif');*/
+        if (ay > 0) {
+          ay -= ay * 0.5;
+        } else {
+          ay += ay * 0.5;
+        }
 
-      // Apply physics
-      impulse -= impulse * 0.5;
-      if (impulse < 0) {
-        impulse = 0;
-      }
+        if (az > 0) {
+          az -= az * 0.5;
+        } else {
+          az += az * 0.5;
+        }
 
-      if (ax > 0) {
-        ax -= ax * 0.5;
-      } else {
-        ax += ax * 0.5;
-      }
+        if (cx > 0) {
+          cx -= cx * 0.5;
+        }
 
-      if (ay > 0) {
-        ay -= ay * 0.5;
-      } else {
-        ay += ay * 0.5;
-      }
+        if (cy > 0) {
+          cy -= cy * 0.5;
+        }
 
-      if (az > 0) {
-        az -= az * 0.5;
-      } else {
-        az += az * 0.5;
-      }
-
-      if (cx > 0) {
-        cx -= cx * 0.5;
-      }
-
-      if (cy > 0) {
-        cy -= cy * 0.5;
-      }
-
-      if (cz > 0) {
-        cz -= cz * 0.5;
-      }
+        if (cz > 0) {
+          cz -= cz * 0.5;
+        }
 
 
-      var delta = currentTime-lastFrameRenderTime;
-      var deltaTime = dhm(delta);
-      Logger.debug('[' + frame + '] Total frame render time:', deltaTime);
+        var delta = currentTime-lastFrameRenderTime;
+        var deltaTime = dhm(delta);
+        Logger.debug('[' + frame + '] Total frame render time:', deltaTime);
 
-      // Store render time for next frame
-      lastFrameRenderTime = currentTime;
+        // Store render time for next frame
+        lastFrameRenderTime = currentTime;
 
-      // Continue loop to next frame
-      requestAnimationFrame(processFrame(program, wireframe));
-    });
-  //}
+        if (progressBar('Rendering frames', frameLimit, frameCount) == 0) {
+            Logger.debug('[' + frame + '] rendering completed @', getDateTime());
+            return;
+        } else {
 
-  // Export visualization
-  // Store gif frame
-
-  /*
-  // Random pixels
-  var pixels = [];
-  for(var i=0; i<(bufferWidth * bufferHeight*4); i+=4) {
-    //for(var j=0; j<3; ++j) {
-    pixels[i+0] = getRandomArbitrary(0,255);
-    pixels[i+1] = getRandomArbitrary(0,255);
-    pixels[i+2] = getRandomArbitrary(0,255);
-    pixels[i+3] = 0;
-    //}
-  }
-  */
+          // Continue loop to next frame
+          requestAnimationFrame(processFrame(program, wireframe));
+        }
+      });
 
 }
 
@@ -2199,7 +2226,7 @@ var frame = 0;
 
 
   // Draw the scene.
-  function drawScene(renderer, wireframe, callback) {
+  function drawScene(renderer, wireframe) {
 
     var m, mesh, t, tl, triangle, l, light,
         attribute, uniform, buffer, data, location,
@@ -2220,7 +2247,7 @@ var frame = 0;
     // Compute the matrices
     var matrix = m4.projection(bufferWidth, bufferHeight, 400);
 
-    Logger.debug('start draw scene gl errors=',gl.getError());
+    //Logger.debug('start draw scene gl errors=',gl.getError());
 
     // Create a buffer to put positions in
     positionBuffer = gl.createBuffer();
@@ -2246,7 +2273,7 @@ var frame = 0;
 
     // Bind the position buffer.
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    Logger.debug('bindBuffer gl errors=',gl.getError());
+    //Logger.debug('bindBuffer gl errors=',gl.getError());
 
     // Tell the position attribute how to get data out of positionBuffer (ARRAY_BUFFER)
     var size = 3;          // 3 components per iteration
@@ -2255,11 +2282,11 @@ var frame = 0;
     var stride = 3*4;        // 0 = move forward size * sizeof(type) each iteration to get the next position
     var offset = 0;        // start at the beginning of the buffer
     gl.vertexAttribPointer(positionLocation, size, type, normalize, stride, offset);
-    Logger.debug('vertexAttribPointer gl errors=',gl.getError());
+    //Logger.debug('vertexAttribPointer gl errors=',gl.getError());
 
     // Bind the color buffer.
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    Logger.debug('bindBuffer gl errors=',gl.getError());
+    //Logger.debug('bindBuffer gl errors=',gl.getError());
     // Tell the attribute how to get data out of colorBuffer (ARRAY_BUFFER)
     var size = 3;                 // 3 components per iteration
     var type = gl.UNSIGNED_BYTE;          // the data is unsigned byte
@@ -2268,7 +2295,7 @@ var frame = 0;
     var offset = 0;               // start at the beginning of the buffer
     gl.vertexAttribPointer(
         colorLocation, size, type, normalize, stride, offset)
-        Logger.debug('vertexAttribPointer gl errors=',gl.getError());
+    //Logger.debug('vertexAttribPointer gl errors=',gl.getError());
 
 //    glvertexAttribPointer(attribute, 4, gl.UNSIGNED_BYTE, false, 32, 12);
 
@@ -2450,7 +2477,7 @@ var frame = 0;
   frameLimit = gifData.frames.length;
   Logger.debug('Total gifData.frames=', gifData.frames.length);
 
-  Logger.debug('gl errors=',gl.getError());
+  //Logger.debug('gl errors=',gl.getError());
 
 
   // Draw the geometry.
@@ -2458,9 +2485,9 @@ var frame = 0;
   var offset = 0;
   var count = vertexCount;//16 * 6;
   gl.drawArrays(primitiveType, offset, count);
-  Logger.debug('WebGLRenderer # of vertices @', vertexCount);
-  Logger.debug('WebGLRenderer draw arrays @', getDateTime());
-  Logger.debug('gl errors=',gl.getError());
+  //Logger.debug('WebGLRenderer # of vertices @', vertexCount);
+  //Logger.debug('WebGLRenderer draw arrays @', getDateTime());
+  //Logger.debug('gl errors=',gl.getError());
 
 
 /*
@@ -2475,14 +2502,6 @@ var frame = 0;
   Logger.debug('WebGLRenderer # of vertices @', numVertices);
   Logger.debug('WebGLRenderer draw arrays @', getDateTime());
 */
-
-  if (callback) {
-    Logger.debug('Rendering callback defined.');
-    // Notify callback of rendering completion
-    callback();
-  }  else {
-    Logger.debug('No rendering callback defined.');
-  }
 }
 
 var m4 = {
@@ -2638,7 +2657,7 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   yMax = Number.NEGATIVE_INFINITY;
 
 
-  var cols=75, rows=75;
+  var cols=45, rows=45;
   var gx,  gy;
 
   var triangleStripArray = new Array();
@@ -2688,7 +2707,7 @@ function initVertexField(gl, positionBuffer, colorBuffer, frame) {
     az = 155;
   }
 
-  Logger.debug('cx=',cx,'cy=',cy,'cz=',cz);
+  //Logger.debug('cx=',cx,'cy=',cy,'cz=',cz);
 
   if (getRandomArbitrary(0, 1) == 1) {
     ax *= -1;
@@ -3244,7 +3263,7 @@ function loadLib() {
 }
 
 exports.loadLib = loadLib;
-exports.generateScene = generateScene;
+exports.loadGif = loadGif;
 exports.exportScene = exportScene;
 
 

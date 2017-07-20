@@ -35,8 +35,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var bufferWidth = 1280;
   var bufferHeight = 1024;
 
-  var frameCount = 0;
-  var frameLimit = 400;
+  var frameCount = 1;
+  var frameLimit = 10;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -1199,17 +1199,17 @@ FSS.WebGLRenderer.prototype.setBufferData = function(index, buffer, value) {
   }
 };
 
+var programBuilt = false;
+
 /**
  * Concepts taken from three.js WebGLRenderer
  * @see https://github.com/mrdoob/three.js/blob/master/src/renderers/WebGLRenderer.js
  */
 FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
 
+    if (!programBuilt) {
+
     if (this.unsupported) return;
-
-    frameCount = 0;
-
-    Logger.debug('WebGLRenderer building program @', getDateTime());
 
     // Create shader source
     var vs = FSS.WebGLRenderer.VS(lights);
@@ -1273,12 +1273,16 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
 
       // Enable program
       this.gl.useProgram(this.program);
-  //}
+
+      programBuilt = true;
+  }
     //Logger.debug('Using program,', this.program);
 
     var wireframe = false;
     Logger.debug('Starting rendering process.');
     return processFrame(program, wireframe);
+
+    //requestAnimationFrame(processFrame(program, wireframe));
 
     // Return the program
     //return program;
@@ -1305,8 +1309,6 @@ FSS.WebGLRenderer.prototype.buildShader = function(type, source) {
 FSS.WebGLRenderer.prototype.buildBuffer = function(program, type, identifier, size, structure, count) {
   var buffer = {buffer:this.gl.createBuffer(), size:size, structure:structure, identifier:identifier, data:null};
 
-  Logger.debug('Built buffer for ', identifier);
-
   // Set the location
   switch (type) {
     case 'attribute':
@@ -1316,9 +1318,6 @@ FSS.WebGLRenderer.prototype.buildBuffer = function(program, type, identifier, si
       buffer.location = this.gl.getUniformLocation(program, identifier);
       break;
   }
-
-  Logger.debug('buffer.location ', buffer.location);
-
 
   // Create the buffer if count is provided
   if (!!count) {
@@ -1687,10 +1686,11 @@ function progressBar(text, total, i) {
 }
 
 function loadGif(inputGifFile, keyword) {
+  console.log('loadGif =', inputGifFile);
 
   return Q.fcall(function () {
 
-    pixel.parse(inputGifFile).then(function(images) {
+    return pixel.parse(inputGifFile).then(function(images) {
       console.log(images.loopCount); // 0(Infinite)
       for (var i = 0; i < images.length; i++) {
         //Logger.debug("Stored frames =", gifData.frames.length);
@@ -1718,36 +1718,25 @@ function loadGif(inputGifFile, keyword) {
 
         gifData.frames.push(fullData);
 
-        progressBar('Storing gif data (' + inputGifFile + ')', images.length, i);
+        progressBar('Storing gif colour data (' + inputGifFile + ')', images.length, i);
       }
 
-      Logger.debug('Loaded gif data for',inputGifFile);
-      console.log('Color palette generated.');
-      var outputGifFile = "render_" + keyword + ".gif";
+      Logger.debug('Loaded gif colour data for',inputGifFile);
+      console.log('Colour palette generated.');
 
-      return exportScene(outputGifFile, false).then(function() {
+    }).then(function() {
+        var outputGifFile = "render_" + keyword + ".gif";
+        return exportScene(outputGifFile, false).then(function() {
 
-  //      return 0;
-  //          genNum++;
-        console.log('Done export.');
-        if (frameCount >= frameLimit) {
-          //initExportGif('render' + frameCount + '.gif');
-          Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
-          finishExportGif();
-        }
+          if (frameCount >= frameLimit) {
+            //initExportGif('render' + frameCount + '.gif');
+            Logger.debug('Exporting @', getDateTime());
+            finishExportGif();
+            console.log('Exported file =', outputGifFile);
+            return 0;
+          }
 
-
-            // imgNum = 10
-            // genNum = 9
-            // itemsLeft = 1
-
-            // p = ||||||
-
-  //          if (progressBar('Generated color palette', imgNum, genNum) == 0) {
-    //        }
-
-          });
-
+        });
     });
   });
 }
@@ -1756,7 +1745,10 @@ function loadGif(inputGifFile, keyword) {
   function exportScene(outputGifFile, wireframe) {
     Logger.debug('Initializing export gif.');
     return initExportGif(outputGifFile).then(function() {
-      return renderer.buildProgram(scene.lights.length, wireframe);
+      return renderer.buildProgram(scene.lights.length, wireframe).then(function() {
+        Logger.debug('Build and execute program completed.');
+
+      });
     });
     //Logger.debug(program);
   }
@@ -1887,16 +1879,9 @@ function processFrame(program, wireframe) {
   var frame = frameCount;
   var currentTime = new Date().getTime();
 
-  Q.fcall(function () {
-      frameCount++;
+  return Q.fcall(function () {
 
-      if (frameCount >= frameLimit) {
-        //initExportGif('render' + frameCount + '.gif');
-        Logger.debug('[' + frame + '] Frame count met, ending processing @', getDateTime());
-        finishExportGif();
-      }
-
-      Logger.debug('[' + frame + '] Frame render @', getDateTime());
+      Logger.debug('[' + frame + '/' + frameLimit + '] Frame render @', getDateTime());
 
       // Clear context
       renderer.clear();
@@ -1906,7 +1891,6 @@ function processFrame(program, wireframe) {
     .then(render(program, wireframe))
     .then(function(result) {
 
-        Logger.debug('Do we get here?');
         // First frame renders black (defect: uncertain why)
         if (skipFirst == 0) {
           skipFirst = 1;
@@ -1916,6 +1900,9 @@ function processFrame(program, wireframe) {
           // Read pixels from gl buffer
           var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
           gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+
+          Logger.debug('[' + frame + '/' + frameLimit + '] stored frame @', getDateTime());
 
           //Logger.debug('[' + frame + '] Encoding frame @', getDateTime());
           // Write out the image into memory
@@ -1959,24 +1946,19 @@ function processFrame(program, wireframe) {
           cz -= cz * 0.5;
         }
 
-        Logger.debug('And here?');
 
         var delta = currentTime-lastFrameRenderTime;
         var deltaTime = dhm(delta);
-        Logger.debug('[' + frame + '] Total frame render time:', deltaTime);
+        Logger.debug('[' + frame + '/' + frameLimit + '] Total frame render time:', deltaTime);
 
-        Logger.debug('And here? 2');
 
         // Store render time for next frame
         lastFrameRenderTime = currentTime;
 
-        if (progressBar('Rendering frames', frameLimit, frameCount) == 0) {
-            Logger.debug('[' + frame + '] rendering completed @', getDateTime());
-            return;
-        } else {
-
+        if (progressBar('Rendering frames', frameLimit, frameCount) > 0) {
+          frameCount++;
           // Continue loop to next frame
-          return requestAnimationFrame(processFrame(program, wireframe));
+          return processFrame(program, wireframe);
         }
       });
 
@@ -1987,6 +1969,7 @@ function finishExportGif() {
   encoder.finish();
   Logger.debug('Encoding completed.');
   gifData.frames = [];
+  frameCount = 1;
 }
 
 function initExportGif(filename) {
@@ -2024,7 +2007,7 @@ var requestAnimationFrame = function(callback) {
       var timeToCall = Math.max(0, 16 - (currentTime - lastTime));
       var id = setTimeout(function() { callback(currentTime + timeToCall); }, timeToCall);
       lastTime = currentTime + timeToCall;
-      return id;
+      //return id;
     }
 
   });
@@ -2058,13 +2041,13 @@ function update(vibFactor) {
     // Set the Geometry to dirty
     geometry.dirty = true;
 
-    Logger.debug('update();');
+    //Logger.debug('update();');
   });
 }
 
 function render(program, wireframe) {
   return Q.fcall(function () {
-    Logger.debug('render();');
+    //Logger.debug('render();');
     return renderer.render(scene, program, wireframe);
   });
 }
@@ -2252,6 +2235,8 @@ var frame = 0;
         update = false, lights = scene.lights.length,
         index, v,vl,vetex,vertexCount = 0;
 
+
+    //Logger.debug('drawScene()');
 
     // Clear the canvas AND the depth buffer.
     //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

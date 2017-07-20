@@ -77,31 +77,34 @@ function progressBar(text, total, i) {
 }
 
 function fetchGifURL(keyword) {
-  console.log('Fetching gif url for keyword: ', keyword);
 
-  var q = keyword; // search query
+  return Q.fcall(function () {
+    console.log('Fetching gif url for keyword: ', keyword);
 
-  request('http://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag='+q, function (error, response, body) {
-    console.log('error:', error); // Print the error if one occurred
-    console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
-    //console.log('body:', body); // Print the HTML for the Google homepage.
-    console.log('Retrieving gif from giphy.');
-        if (response.statusCode >= 200 && response.statusCode < 400) {
-          var urlData = JSON.parse(body).data.image_url;
-          console.log(keyword + ', URL = ' + urlData);
-          storeURL(keyword, urlData);
+    var q = keyword; // search query
 
-          var inputFile = urlData;
-          console.log('Loading lib with', inputFile);
-          imgNum++;
+    request('http://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag='+q, function (error, response, body) {
+      console.log('error:', error); // Print the error if one occurred
+      console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
+      //console.log('body:', body); // Print the HTML for the Google homepage.
+      console.log('Retrieving gif from giphy.');
+          if (response.statusCode >= 200 && response.statusCode < 400) {
+            var urlData = JSON.parse(body).data.image_url;
+            console.log(keyword + ', URL = ' + urlData);
+            storeURL(keyword, urlData);
 
-          //if (imgNum == 1) {
+            var inputFile = urlData;
+            console.log('Loading lib with', inputFile);
+            imgNum++;
 
-          return corelib.loadGif(inputFile, keyword);
-          //}
+            //if (imgNum == 1) {
 
-          //console.log('data = ', data);
-        }
+            return corelib.loadGif(inputFile, keyword);
+            //}
+
+            //console.log('data = ', data);
+          }
+    });
   });
 }
 

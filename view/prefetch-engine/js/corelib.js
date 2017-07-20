@@ -37,6 +37,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 
   var frameCount = 1;
   var frameLimit = 10;
+  var frameDivider = 8;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -109,7 +110,9 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 
   var version = 0.1;
   Logger.useDefaults();
+  Logger.info('==========================================');
   Logger.info('Monkey Maya Video Processing Engine v' + version);
+  Logger.info('==========================================');
 
   var img = {
     preview: null,
@@ -1686,9 +1689,13 @@ function progressBar(text, total, i) {
 }
 
 function loadGif(inputGifFile, keyword) {
-  console.log('loadGif =', inputGifFile);
+  console.log('keyword =', keyword, ', loadGif =', inputGifFile);
 
   return Q.fcall(function () {
+
+    Logger.debug('---------------------------');
+    Logger.debug('Generating colour palette ');
+    Logger.debug('---------------------------');
 
     return pixel.parse(inputGifFile).then(function(images) {
       console.log(images.loopCount); // 0(Infinite)
@@ -1965,15 +1972,28 @@ function processFrame(program, wireframe) {
 }
 
 function finishExportGif() {
-
   encoder.finish();
+  Logger.debug('--------------------');
   Logger.debug('Encoding completed.');
-  gifData.frames = [];
-  frameCount = 1;
+  Logger.debug('--------------------');
 }
 
 function initExportGif(filename) {
   return Q.fcall(function () {
+
+    Logger.debug('--------------------');
+    Logger.debug('Init export gif');
+    Logger.debug('--------------------');
+
+    // Clear frame data
+    gifData.frames = [];
+    gifData.widths = [];
+    gifData.heights = [];
+    frameCount = 1;
+
+    Logger.debug('');
+    Logger.debug('| Encoding Parameters: |');
+    Logger.debug('');
 
     // stream the results as they are available into myanimated.gif
     encoder.createReadStream().pipe(fs.createWriteStream(filename));
@@ -1985,6 +2005,17 @@ function initExportGif(filename) {
 
     Logger.debug('GL drawing buffer width = ' + gl.drawingBufferWidth);
     Logger.debug('GL drawing buffer height = ' + gl.drawingBufferHeight);
+
+    Logger.debug('gifData.frames.length=' + gifData.frames.length);
+    Logger.debug('gifData.widths.length=' + gifData.widths.length);
+    Logger.debug('gifData.heights.length=' + gifData.heights.length);
+
+    Logger.debug('frameCount=' + frameCount);
+    Logger.debug('frameLimits=' + frameLimits);
+    Logger.debug('frameDivider=' + frameDivider);
+
+    Logger.debug('lastFrameRenderTime=' + lastFrameRenderTime);
+    Logger.debug('skipFirst=' + skipFirst);
 
     return 0;
   });
@@ -2020,6 +2051,10 @@ var cancelAnimationFrame = function(id) {
 function update(vibFactor) {
   return Q.fcall(function () {
 
+    Logger.debug('--------------------');
+    Logger.debug('Updating');
+    Logger.debug('--------------------');
+
     var v, vertex, offset = MESH.depth/100;
 
     // Add depth to Vertices
@@ -2048,6 +2083,10 @@ function update(vibFactor) {
 function render(program, wireframe) {
   return Q.fcall(function () {
     //Logger.debug('render();');
+    Logger.debug('--------------------');
+    Logger.debug('Rendering');
+    Logger.debug('--------------------');
+
     return renderer.render(scene, program, wireframe);
   });
 }
@@ -2478,7 +2517,7 @@ var frame = 0;
   //Logger.debug('matrix=', matrix);
 
   // Update frame limit
-  frameLimit = 4;//gifData.frames.length;
+  frameLimit = Math.round(gifData.frames.length / frameDivider);
   Logger.debug('Total gifData.frames=', gifData.frames.length);
 
   //Logger.debug('gl errors=',gl.getError());

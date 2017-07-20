@@ -37,7 +37,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 
   var frameCount = 1;
   var frameLimit = 10;
-  var frameDivider = 8;
+  var frameDivider = 2;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -1744,7 +1744,7 @@ function loadGif(inputGifFile, keyword) {
           }
 
         });
-    });
+    }).done();
   });
 }
 
@@ -1755,7 +1755,7 @@ function loadGif(inputGifFile, keyword) {
       return renderer.buildProgram(scene.lights.length, wireframe).then(function() {
         Logger.debug('Build and execute program completed.');
 
-      });
+      }).done();
     });
     //Logger.debug(program);
   }
@@ -1976,6 +1976,13 @@ function finishExportGif() {
   Logger.debug('--------------------');
   Logger.debug('Encoding completed.');
   Logger.debug('--------------------');
+
+  // Clear frame data
+  gifData.frames = [];
+  gifData.widths = [];
+  gifData.heights = [];
+  frameCount = 1;
+
 }
 
 function initExportGif(filename) {
@@ -1985,11 +1992,6 @@ function initExportGif(filename) {
     Logger.debug('Init export gif');
     Logger.debug('--------------------');
 
-    // Clear frame data
-    gifData.frames = [];
-    gifData.widths = [];
-    gifData.heights = [];
-    frameCount = 1;
 
     Logger.debug('');
     Logger.debug('| Encoding Parameters: |');
@@ -2011,13 +2013,12 @@ function initExportGif(filename) {
     Logger.debug('gifData.heights.length=' + gifData.heights.length);
 
     Logger.debug('frameCount=' + frameCount);
-    Logger.debug('frameLimits=' + frameLimits);
+    Logger.debug('frameLimit=' + frameLimit);
     Logger.debug('frameDivider=' + frameDivider);
 
     Logger.debug('lastFrameRenderTime=' + lastFrameRenderTime);
     Logger.debug('skipFirst=' + skipFirst);
 
-    return 0;
   });
 }
 
@@ -2051,9 +2052,7 @@ var cancelAnimationFrame = function(id) {
 function update(vibFactor) {
   return Q.fcall(function () {
 
-    Logger.debug('--------------------');
-    Logger.debug('Updating');
-    Logger.debug('--------------------');
+    Logger.debug('| Updating |');
 
     var v, vertex, offset = MESH.depth/100;
 
@@ -2083,9 +2082,7 @@ function update(vibFactor) {
 function render(program, wireframe) {
   return Q.fcall(function () {
     //Logger.debug('render();');
-    Logger.debug('--------------------');
-    Logger.debug('Rendering');
-    Logger.debug('--------------------');
+    Logger.debug('| Rendering |');
 
     return renderer.render(scene, program, wireframe);
   });

@@ -78,8 +78,6 @@ function progressBar(text, total, i) {
 
 function fetchGifURL(keyword) {
 
-  return Q.fcall(function () {
-
     console.log('| Fetching gif url for keyword: ', keyword, '|');
 
     var q = keyword; // search query
@@ -105,12 +103,6 @@ function fetchGifURL(keyword) {
             //console.log('data = ', data);
           }
     });
-
-
-  }).then(function() {
-    console.log('We load gif', inputFile);
-
-  });
 }
 
 var loadKeywords = function(res) {
@@ -204,7 +196,11 @@ keywords.push('euphoric');*/
 keywords.push('raging');
 keywords.push('vibrant');
 
-fetchGifURL(keywords[0]).then(fetchGifURL(keywords[1]));
+// Single rneder
+Q.fcall(function () { fetchGifURL(keywords[0]) });//.then(Q.fcall(function () { fetchGifURL(keywords[1]) }));
+
+
+//fetchGifURL(keywords[0]).then(fetchGifURL(keywords[1]));
 
 /*
 var funcs = [];

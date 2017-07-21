@@ -48,6 +48,7 @@ var Q = require('q');
 // Include the public functions from 'libs.js'
 var libs = require('./libs.js');
 var corelib = libs.corelib;
+
 //console.log('Available export methods: ', corelib);
 corelib.loadLib();
 var imgNum = 0;

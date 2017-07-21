@@ -37,7 +37,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 
   var frameCount = 1;
   var frameLimit = 10;
-  var frameDivider = 2;
+  var frameDivider = 8;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -71,6 +71,191 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
     heights: []
   }
 
+  var m4 = {
+
+
+    /**
+     * Makes an identity matrix.
+     * @param {Matrix4} [dst] optional matrix to store result
+     * @return {Matrix4} dst or a new matrix of none provided
+     * @memberOf module:webgl-3d-math
+     */
+    identity: function (dst) {
+      dst = dst || new Float32Array(16);
+
+      dst[ 0] = 1;
+      dst[ 1] = 0;
+      dst[ 2] = 0;
+      dst[ 3] = 0;
+      dst[ 4] = 0;
+      dst[ 5] = 1;
+      dst[ 6] = 0;
+      dst[ 7] = 0;
+      dst[ 8] = 0;
+      dst[ 9] = 0;
+      dst[10] = 1;
+      dst[11] = 0;
+      dst[12] = 0;
+      dst[13] = 0;
+      dst[14] = 0;
+      dst[15] = 1;
+
+      return dst;
+    },
+
+    perspective: function(fieldOfViewInRadians, aspect, near, far) {
+      var f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewInRadians);
+      var rangeInv = 1.0 / (near - far);
+
+      return [
+        f / aspect, 0, 0, 0,
+        0, f, 0, 0,
+        0, 0, (near + far) * rangeInv, -1,
+        0, 0, near * far * rangeInv * 2, 0
+      ];
+    },
+
+    projection: function(width, height, depth) {
+      // Note: This matrix flips the Y axis so 0 is at the top.
+      return [
+         2 / width, 0, 0, 0,
+         0, -2 / height, 0, 0,
+         0, 0, 2 / depth, 0,
+        -1, 1, 0, 1,
+      ];
+    },
+
+    multiply: function(a, b) {
+      var a00 = a[0 * 4 + 0];
+      var a01 = a[0 * 4 + 1];
+      var a02 = a[0 * 4 + 2];
+      var a03 = a[0 * 4 + 3];
+      var a10 = a[1 * 4 + 0];
+      var a11 = a[1 * 4 + 1];
+      var a12 = a[1 * 4 + 2];
+      var a13 = a[1 * 4 + 3];
+      var a20 = a[2 * 4 + 0];
+      var a21 = a[2 * 4 + 1];
+      var a22 = a[2 * 4 + 2];
+      var a23 = a[2 * 4 + 3];
+      var a30 = a[3 * 4 + 0];
+      var a31 = a[3 * 4 + 1];
+      var a32 = a[3 * 4 + 2];
+      var a33 = a[3 * 4 + 3];
+      var b00 = b[0 * 4 + 0];
+      var b01 = b[0 * 4 + 1];
+      var b02 = b[0 * 4 + 2];
+      var b03 = b[0 * 4 + 3];
+      var b10 = b[1 * 4 + 0];
+      var b11 = b[1 * 4 + 1];
+      var b12 = b[1 * 4 + 2];
+      var b13 = b[1 * 4 + 3];
+      var b20 = b[2 * 4 + 0];
+      var b21 = b[2 * 4 + 1];
+      var b22 = b[2 * 4 + 2];
+      var b23 = b[2 * 4 + 3];
+      var b30 = b[3 * 4 + 0];
+      var b31 = b[3 * 4 + 1];
+      var b32 = b[3 * 4 + 2];
+      var b33 = b[3 * 4 + 3];
+      return [
+        b00 * a00 + b01 * a10 + b02 * a20 + b03 * a30,
+        b00 * a01 + b01 * a11 + b02 * a21 + b03 * a31,
+        b00 * a02 + b01 * a12 + b02 * a22 + b03 * a32,
+        b00 * a03 + b01 * a13 + b02 * a23 + b03 * a33,
+        b10 * a00 + b11 * a10 + b12 * a20 + b13 * a30,
+        b10 * a01 + b11 * a11 + b12 * a21 + b13 * a31,
+        b10 * a02 + b11 * a12 + b12 * a22 + b13 * a32,
+        b10 * a03 + b11 * a13 + b12 * a23 + b13 * a33,
+        b20 * a00 + b21 * a10 + b22 * a20 + b23 * a30,
+        b20 * a01 + b21 * a11 + b22 * a21 + b23 * a31,
+        b20 * a02 + b21 * a12 + b22 * a22 + b23 * a32,
+        b20 * a03 + b21 * a13 + b22 * a23 + b23 * a33,
+        b30 * a00 + b31 * a10 + b32 * a20 + b33 * a30,
+        b30 * a01 + b31 * a11 + b32 * a21 + b33 * a31,
+        b30 * a02 + b31 * a12 + b32 * a22 + b33 * a32,
+        b30 * a03 + b31 * a13 + b32 * a23 + b33 * a33,
+      ];
+    },
+
+    translation: function(tx, ty, tz) {
+      return [
+         1,  0,  0,  0,
+         0,  1,  0,  0,
+         0,  0,  1,  0,
+         tx, ty, tz, 1,
+      ];
+    },
+
+    xRotation: function(angleInRadians) {
+      var c = Math.cos(angleInRadians);
+      var s = Math.sin(angleInRadians);
+
+      return [
+        1, 0, 0, 0,
+        0, c, s, 0,
+        0, -s, c, 0,
+        0, 0, 0, 1,
+      ];
+    },
+
+    yRotation: function(angleInRadians) {
+      var c = Math.cos(angleInRadians);
+      var s = Math.sin(angleInRadians);
+
+      return [
+        c, 0, -s, 0,
+        0, 1, 0, 0,
+        s, 0, c, 0,
+        0, 0, 0, 1,
+      ];
+    },
+
+    zRotation: function(angleInRadians) {
+      var c = Math.cos(angleInRadians);
+      var s = Math.sin(angleInRadians);
+
+      return [
+         c, s, 0, 0,
+        -s, c, 0, 0,
+         0, 0, 1, 0,
+         0, 0, 0, 1,
+      ];
+    },
+
+    scaling: function(sx, sy, sz) {
+      return [
+        sx, 0,  0,  0,
+        0, sy,  0,  0,
+        0,  0, sz,  0,
+        0,  0,  0,  1,
+      ];
+    },
+
+    translate: function(m, tx, ty, tz) {
+      return m4.multiply(m, m4.translation(tx, ty, tz));
+    },
+
+    xRotate: function(m, angleInRadians) {
+      return m4.multiply(m, m4.xRotation(angleInRadians));
+    },
+
+    yRotate: function(m, angleInRadians) {
+      return m4.multiply(m, m4.yRotation(angleInRadians));
+    },
+
+    zRotate: function(m, angleInRadians) {
+      return m4.multiply(m, m4.zRotation(angleInRadians));
+    },
+
+    scale: function(m, sx, sy, sz) {
+      return m4.multiply(m, m4.scaling(sx, sy, sz));
+    },
+
+  };
+
+  var gl = require('gl')(bufferWidth, bufferHeight, parameters);
+
   // Log messages will be written to the window's console.
   var Logger = require('js-logger');
   var request = require('request');
@@ -78,10 +263,6 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var Canvas = require('canvas');
   var fs = require('fs');
   var Q = require('q');
-
-  var WebGLText = require('webgl-text');
-//  import WebGLText from 'webgl-text';
-
 
   // Create parameters object
   var parameters = {
@@ -92,7 +273,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
     alpha: false
   };
 
-  var gl = require('gl')(bufferWidth, bufferHeight, parameters);
+
 //
   var gifyParse = require('gify-parse');
   var getPixels = require("get-pixels");
@@ -139,6 +320,411 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var rotation = [degToRad(0), degToRad(0), degToRad(0)];
   var scale = [0.2, 0.2, 0.2];
 
+
+  // functions
+
+  // WebGL text
+  var fontInfo = {
+    letterHeight: 8,
+    spaceWidth: 8,
+    spacing: -1,
+    textureWidth: 64,
+    textureHeight: 40,
+    glyphInfos: {
+      'a': { x:  0, y:  0, width: 8, },
+      'b': { x:  8, y:  0, width: 8, },
+      'c': { x: 16, y:  0, width: 8, },
+      'd': { x: 24, y:  0, width: 8, },
+      'e': { x: 32, y:  0, width: 8, },
+      'f': { x: 40, y:  0, width: 8, },
+      'g': { x: 48, y:  0, width: 8, },
+      'h': { x: 56, y:  0, width: 8, },
+      'i': { x:  0, y:  8, width: 8, },
+      'j': { x:  8, y:  8, width: 8, },
+      'k': { x: 16, y:  8, width: 8, },
+      'l': { x: 24, y:  8, width: 8, },
+      'm': { x: 32, y:  8, width: 8, },
+      'n': { x: 40, y:  8, width: 8, },
+      'o': { x: 48, y:  8, width: 8, },
+      'p': { x: 56, y:  8, width: 8, },
+      'q': { x:  0, y: 16, width: 8, },
+      'r': { x:  8, y: 16, width: 8, },
+      's': { x: 16, y: 16, width: 8, },
+      't': { x: 24, y: 16, width: 8, },
+      'u': { x: 32, y: 16, width: 8, },
+      'v': { x: 40, y: 16, width: 8, },
+      'w': { x: 48, y: 16, width: 8, },
+      'x': { x: 56, y: 16, width: 8, },
+      'y': { x:  0, y: 24, width: 8, },
+      'z': { x:  8, y: 24, width: 8, },
+      '0': { x: 16, y: 24, width: 8, },
+      '1': { x: 24, y: 24, width: 8, },
+      '2': { x: 32, y: 24, width: 8, },
+      '3': { x: 40, y: 24, width: 8, },
+      '4': { x: 48, y: 24, width: 8, },
+      '5': { x: 56, y: 24, width: 8, },
+      '6': { x:  0, y: 32, width: 8, },
+      '7': { x:  8, y: 32, width: 8, },
+      '8': { x: 16, y: 32, width: 8, },
+      '9': { x: 24, y: 32, width: 8, },
+      '-': { x: 32, y: 32, width: 8, },
+      '*': { x: 40, y: 32, width: 8, },
+      '!': { x: 48, y: 32, width: 8, },
+      '?': { x: 56, y: 32, width: 8, },
+    },
+  };
+
+
+  function makeVerticesForString(fontInfo, s) {
+    var len = s.length;
+    var numVertices = len * 6;
+    var positions = new Float32Array(numVertices * 2);
+    var texcoords = new Float32Array(numVertices * 2);
+    var offset = 0;
+    var x = 0;
+    var maxX = fontInfo.textureWidth;
+    var maxY = fontInfo.textureHeight;
+    for (var ii = 0; ii < len; ++ii) {
+      var letter = s[ii];
+      var glyphInfo = fontInfo.glyphInfos[letter];
+      if (glyphInfo) {
+        var x2 = x + glyphInfo.width;
+        var u1 = glyphInfo.x / maxX;
+        var v1 = (glyphInfo.y + fontInfo.letterHeight - 1) / maxY;
+        var u2 = (glyphInfo.x + glyphInfo.width - 1) / maxX;
+        var v2 = glyphInfo.y / maxY;
+
+        // 6 vertices per letter
+        positions[offset + 0] = x;
+        positions[offset + 1] = 0;
+        texcoords[offset + 0] = u1;
+        texcoords[offset + 1] = v1;
+
+        positions[offset + 2] = x2;
+        positions[offset + 3] = 0;
+        texcoords[offset + 2] = u2;
+        texcoords[offset + 3] = v1;
+
+        positions[offset + 4] = x;
+        positions[offset + 5] = fontInfo.letterHeight;
+        texcoords[offset + 4] = u1;
+        texcoords[offset + 5] = v2;
+
+        positions[offset + 6] = x;
+        positions[offset + 7] = fontInfo.letterHeight;
+        texcoords[offset + 6] = u1;
+        texcoords[offset + 7] = v2;
+
+        positions[offset + 8] = x2;
+        positions[offset + 9] = 0;
+        texcoords[offset + 8] = u2;
+        texcoords[offset + 9] = v1;
+
+        positions[offset + 10] = x2;
+        positions[offset + 11] = fontInfo.letterHeight;
+        texcoords[offset + 10] = u2;
+        texcoords[offset + 11] = v2;
+
+        x += glyphInfo.width + fontInfo.spacing;
+        offset += 12;
+      } else {
+        // we don't have this character so just advance
+        x += fontInfo.spaceWidth;
+      }
+    }
+
+    // return ArrayBufferViews for the portion of the TypedArrays
+    // that were actually used.
+    return {
+      arrays: {
+        position: new Float32Array(positions.buffer, 0, offset),
+        texcoord: new Float32Array(texcoords.buffer, 0, offset),
+      },
+      numVertices: offset / 2,
+    };
+  }
+
+  // Maunally create a bufferInfo
+  var textBufferInfo = {
+    attribs: {
+      a_position: { buffer: gl.createBuffer(), numComponents: 2, },
+      a_texcoord: { buffer: gl.createBuffer(), numComponents: 2, },
+    },
+    numElements: 0,
+  };
+
+  var names = [
+    "anna",   // 0
+    "colin",  // 1
+    "james",  // 2
+    "danny",  // 3
+    "kalin",  // 4
+    "hiro",   // 5
+    "eddie",  // 6
+    "shu",    // 7
+    "brian",  // 8
+    "tami",   // 9
+    "rick",   // 10
+    "gene",   // 11
+    "natalie",// 12,
+    "evan",   // 13,
+    "sakura", // 14,
+    "kai",    // 15,
+  ];
+
+  // Create a texture.
+  var glyphTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, glyphTex);
+  // Fill the texture with a 1x1 blue pixel.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                new Uint8Array([0, 0, 255, 255]));
+
+
+    var fUniforms = {
+      u_matrix: m4.identity(),
+    };
+
+    var textUniforms = {
+      u_matrix: m4.identity(),
+      u_texture: glyphTex,
+      u_color: [0, 0, 0, 1],  // black
+    };
+
+    function radToDeg(r) {
+      return r * 180 / Math.PI;
+    }
+
+    function degToRad(d) {
+      return d * Math.PI / 180;
+    }
+
+/*
+    var translation = [0, 30, 0];
+    var rotation = [degToRad(190), degToRad(0), degToRad(0)];
+    var scale = [1, 1, 1];
+    var fieldOfViewRadians = degToRad(60);
+    var rotationSpeed = 1.2;
+
+    var then = 0;
+*/
+    // Draw the scene.
+    function drawScene(now) {
+
+      // Convert to seconds
+      now *= 0.001;
+      // Subtract the previous time from the current time
+      var deltaTime = now - then;
+      // Remember the current time for the next frame.
+      then = now;
+
+      webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+
+      // Tell WebGL how to convert from clip space to pixels
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+      // Every frame increase the rotation a little.
+      rotation[1] += rotationSpeed * deltaTime;
+
+      gl.enable(gl.CULL_FACE);
+      gl.enable(gl.DEPTH_TEST);
+      gl.disable(gl.BLEND);
+      gl.depthMask(true);
+
+      // Clear the canvas AND the depth buffer.
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // Compute the matrices used for all objects
+      var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+      var zNear = 1;
+      var zFar = 2000;
+      var projectionMatrix = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
+
+      // Compute the camera's matrix using look at.
+      var cameraRadius = 360;
+      var cameraPosition = [Math.cos(now) * cameraRadius, 0, Math.sin(now) * cameraRadius];
+      var target = [0, 0, 0];
+      var up = [0, 1, 0];
+      var cameraMatrix = m4.lookAt(cameraPosition, target, up);
+      var viewMatrix = m4.inverse(cameraMatrix);
+
+      var textPositions = [];
+
+
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false);
+
+      // draw the text
+
+      // setup to draw the text.
+      // Because every letter uses the same attributes and the same progarm
+      // we only need to do this once.
+      gl.useProgram(textProgramInfo.program);
+      webglUtils.setBuffersAndAttributes(gl, textProgramInfo, textBufferInfo);
+
+      textPositions.forEach(function(pos, ndx) {
+
+        var name = names[ndx];
+        var s = name + ":" + pos[0].toFixed(0) + "," + pos[1].toFixed(0) + "," + pos[2].toFixed(0);
+        var vertices = makeVerticesForString(fontInfo, s);
+
+        // update the buffers
+        textBufferInfo.attribs.a_position.numComponents = 2;
+        gl.bindBuffer(gl.ARRAY_BUFFER, textBufferInfo.attribs.a_position.buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices.arrays.position, gl.DYNAMIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, textBufferInfo.attribs.a_texcoord.buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices.arrays.texcoord, gl.DYNAMIC_DRAW);
+
+        // use just the position of the 'F' for the text
+
+        // because pos is in view space that means it's a vector from the eye to
+        // some position. So translate along that vector back toward the eye some distance
+        var fromEye = m4.normalize(pos);
+        var amountToMoveTowardEye = 150;  // because the F is 150 units long
+        var viewX = pos[0] - fromEye[0] * amountToMoveTowardEye;
+        var viewY = pos[1] - fromEye[1] * amountToMoveTowardEye;
+        var viewZ = pos[2] - fromEye[2] * amountToMoveTowardEye;
+        var desiredTextScale = -1 / gl.canvas.height * 2;  // 1x1 pixels
+        var scale = viewZ * desiredTextScale;
+
+        var textMatrix = m4.translate(projectionMatrix, viewX, viewY, viewZ);
+        // scale the F to the size we need it.
+        textMatrix = m4.scale(textMatrix, scale, scale, 1);
+
+        // set texture uniform
+        m4.copy(textMatrix, textUniforms.u_matrix);
+        webglUtils.setUniforms(textProgramInfo, textUniforms);
+
+        // Draw the text.
+        gl.drawArrays(gl.TRIANGLES, 0, vertices.numVertices);
+      });
+
+      requestAnimationFrame(drawScene);
+    }
+
+
+
+  function generateTextVertexShader() {
+
+    var shader = [
+
+    // Precision
+    'precision mediump float;',
+
+    // Attributes
+    'attribute vec4 a_position;',
+    'attribute vec2 a_texcoord;',
+
+
+    'uniform mat4 u_matrix;',
+
+    // Varyings
+    //'varying vec4 v_color;',
+    'varying vec2 v_texcoord;',
+
+
+    // Main
+    'void main() {',
+
+      'gl_Position = u_matrix * a_position;',
+
+        // Pass the texcoord to the fragment shader.
+        'v_texcoord = a_texcoord;',
+      // Clamp color
+  //    'v_color = clamp(v_color, 0.0, 1.0);',
+
+    '}'
+
+    // Return the shader
+    ].join('\n');
+    return shader;
+  };
+
+  function generateTextFragmentShader() {
+    var shader = [
+
+    // Precision
+    'precision mediump float;',
+
+    // Varyings
+    'varying vec2 v_texcoord;',
+
+    'uniform sampler2D u_texture;',
+
+    // Main
+    'void main() {',
+
+      // Set gl_FragColor
+      'gl_FragColor = texture2D(u_texture, v_texcoord);',
+
+      //'gl_FragColor = v_color;',
+      //'gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);',
+      //'gl_FragColor = vec4(gl_FragCoord.x / 640.0, gl_FragCoord.y / 480.0, 0, 1);',
+
+    '}'
+
+    // Return the shader
+    ].join('\n');
+    return shader;
+  };
+
+/*
+  // Create the program and shaders
+  var textProgram = gl.createProgram();
+
+  var textVS = generateTextVertexShader();
+  var textFS = generateTextFragmentShader();
+
+  // Create and compile shader
+  var textVertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(textVertexShader, textVS);
+  gl.compileShader(textVertexShader);
+
+  // Add error handling
+  if (!gl.getShaderParameter(textVertexShader, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(textVertexShader));
+    return null;
+  }
+
+  // Create and compile shader
+  var textFragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(textFragmentShader, textFS);
+  gl.compileShader(textFragmentShader);
+
+  // Add error handling
+  if (!gl.getShaderParameter(textFragmentShader, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(textFragmentShader));
+    return null;
+  }
+
+  // Attach and link the shader
+  gl.attachShader(textProgram, textVertexShader);
+  gl.attachShader(textProgram, textFragmentShader);
+  gl.linkProgram(textProgram);
+
+  // Add error handling
+  if (!gl.getProgramParameter(textProgram, gl.LINK_STATUS)) {
+    var error = gl.getError();
+    var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
+    console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
+    return null;
+  }
+
+  // Delete the shader
+  gl.deleteShader(textFragmentShader);
+  gl.deleteShader(textVertexShader);
+
+*/
+
+// Need to enable program
+  // Set the program code
+//  program.textCode = textCode;
+
+  // setup GLSL programs
+  //var fProgramInfo = webglUtils.createProgramInfo(gl, ["3d-vertex-shader", "3d-fragment-shader"]);
+  //var textProgramInfo = webglUtils.createProgramInfo(gl, ["text-vertex-shader", "text-fragment-shader"]);
+
+  // text
 
   function supertriangle(vertices) {
     var xmin = Number.POSITIVE_INFINITY,
@@ -1192,7 +1778,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
   // Draw scene
   drawScene(this, wireframe);
 
-  Logger.debug('| Draw Text |');
+  //Logger.debug('| Draw Text |');
 
   // Draw text
 /*
@@ -1213,8 +1799,8 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
             size: { width: 300, height: 100 }
         });
 */
-var text = "Hello";
-Logger.debug('text=',text);
+//var text = "Hello";
+//Logger.debug('text=',text);
 
   return this;
 };
@@ -1249,7 +1835,7 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
     // Derive the shader fingerprint
     var code = vs + fs;
 
-    //Logger.debug('Creating program=',code);
+    Logger.debug('Creating program=',code);
 
     // Check if the program has already been compiled
     //if (!!this.program && this.program.code === code) {
@@ -1260,7 +1846,13 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
       var vertexShader = this.buildShader(this.gl.VERTEX_SHADER, vs);
       var fragmentShader = this.buildShader(this.gl.FRAGMENT_SHADER, fs);
 
-      // Attach an link the shader
+      // Create the program and shaders
+/*      var textProgram = this.gl.createProgram();
+      var textVertexShader = this.buildShader(this.gl.VERTEX_SHADER, textVS);
+      var textFragmentShader = this.buildShader(this.gl.FRAGMENT_SHADER, textFS);
+*/
+
+      // Attach and link the shader
       this.gl.attachShader(program, vertexShader);
       this.gl.attachShader(program, fragmentShader);
       this.gl.linkProgram(program);
@@ -1302,21 +1894,16 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
       // Set the renderer program
       this.program = program;
 
+      // Move to processFrame for program switching
       // Enable program
       this.gl.useProgram(this.program);
 
       programBuilt = true;
   }
-    //Logger.debug('Using program,', this.program);
 
     var wireframe = false;
     Logger.debug('Starting rendering process.');
     return processFrame(program, wireframe);
-
-    //requestAnimationFrame(processFrame(program, wireframe));
-
-    // Return the program
-    //return program;
 };
 
 FSS.WebGLRenderer.prototype.buildShader = function(type, source) {
@@ -1715,6 +2302,69 @@ function progressBar(text, total, i) {
 
   return itemsLeft;
 }
+
+
+function loadFont() {
+  var fontFile = "https://webglfundamentals.org/webgl/resources/8x8-font.png";
+  console.log('| Load Font |');
+
+  return Q.fcall(function () {
+
+    Logger.debug('---------------------------');
+    Logger.debug('Creating font texture ');
+    Logger.debug('---------------------------');
+
+    var fontTextureWidth;
+    var fontTextureHeight;
+
+    return pixel.parse(fontFile).then(function(images) {
+      console.log(images.loopCount); // 0(Infinite)
+      for (var i = 0; i < images.length; i++) {
+        //Logger.debug("Stored frames =", gifData.frames.length);
+
+        fontTextureWidth = images[i].width;
+        fontTextureHeight = images[i].height;
+
+        //console.log('gifData.width =',gifData.width);
+        //console.log('gifData.height =',gifData.height);
+        //console.log('images[i] =',images[i]);
+
+        // Make space for extra alpha channel
+        var fullData =  new Uint8Array(fontTextureWidth*fontTextureHeight*3);
+        //Logger.debug('fullData length=',fullData.length);
+
+        var pixelIndex = 0;
+        // Populate full data set
+        for (var j = 0; j < fullData.length; j += 3) {
+          fullData[j] = images[i].data[pixelIndex];
+          fullData[j+1] = images[i].data[pixelIndex+1];
+          fullData[j+2] = images[i].data[pixelIndex+2];
+          pixelIndex += 4;
+        }
+
+        //gifData.frames.push(fullData);
+
+        // Now that the image has loaded make copy it to the texture.
+        gl.bindTexture(gl.TEXTURE_2D, glyphTex);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fullData);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+
+        progressBar('Storing font texture data (' + fontFile + ')', images.length, i);
+      }
+
+      Logger.debug('Loaded font texture data.');
+
+    }).then(function() {
+      Logger.debug('Post font texture loading operations: NO OP');
+    }).done();
+  });
+}
+
 
 function loadGif(inputGifFile, keyword) {
   console.log('keyword =', keyword, ', loadGif =', inputGifFile);
@@ -2120,159 +2770,6 @@ function getRandomColor(){
   return '#'+(Math.random().toString(16) + '000000').slice(2, 8);
 }
 
-var m4 = {
-
-  perspective: function(fieldOfViewInRadians, aspect, near, far) {
-    var f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewInRadians);
-    var rangeInv = 1.0 / (near - far);
-
-    return [
-      f / aspect, 0, 0, 0,
-      0, f, 0, 0,
-      0, 0, (near + far) * rangeInv, -1,
-      0, 0, near * far * rangeInv * 2, 0
-    ];
-  },
-
-  projection: function(width, height, depth) {
-    // Note: This matrix flips the Y axis so 0 is at the top.
-    return [
-       2 / width, 0, 0, 0,
-       0, -2 / height, 0, 0,
-       0, 0, 2 / depth, 0,
-      -1, 1, 0, 1,
-    ];
-  },
-
-  multiply: function(a, b) {
-    var a00 = a[0 * 4 + 0];
-    var a01 = a[0 * 4 + 1];
-    var a02 = a[0 * 4 + 2];
-    var a03 = a[0 * 4 + 3];
-    var a10 = a[1 * 4 + 0];
-    var a11 = a[1 * 4 + 1];
-    var a12 = a[1 * 4 + 2];
-    var a13 = a[1 * 4 + 3];
-    var a20 = a[2 * 4 + 0];
-    var a21 = a[2 * 4 + 1];
-    var a22 = a[2 * 4 + 2];
-    var a23 = a[2 * 4 + 3];
-    var a30 = a[3 * 4 + 0];
-    var a31 = a[3 * 4 + 1];
-    var a32 = a[3 * 4 + 2];
-    var a33 = a[3 * 4 + 3];
-    var b00 = b[0 * 4 + 0];
-    var b01 = b[0 * 4 + 1];
-    var b02 = b[0 * 4 + 2];
-    var b03 = b[0 * 4 + 3];
-    var b10 = b[1 * 4 + 0];
-    var b11 = b[1 * 4 + 1];
-    var b12 = b[1 * 4 + 2];
-    var b13 = b[1 * 4 + 3];
-    var b20 = b[2 * 4 + 0];
-    var b21 = b[2 * 4 + 1];
-    var b22 = b[2 * 4 + 2];
-    var b23 = b[2 * 4 + 3];
-    var b30 = b[3 * 4 + 0];
-    var b31 = b[3 * 4 + 1];
-    var b32 = b[3 * 4 + 2];
-    var b33 = b[3 * 4 + 3];
-    return [
-      b00 * a00 + b01 * a10 + b02 * a20 + b03 * a30,
-      b00 * a01 + b01 * a11 + b02 * a21 + b03 * a31,
-      b00 * a02 + b01 * a12 + b02 * a22 + b03 * a32,
-      b00 * a03 + b01 * a13 + b02 * a23 + b03 * a33,
-      b10 * a00 + b11 * a10 + b12 * a20 + b13 * a30,
-      b10 * a01 + b11 * a11 + b12 * a21 + b13 * a31,
-      b10 * a02 + b11 * a12 + b12 * a22 + b13 * a32,
-      b10 * a03 + b11 * a13 + b12 * a23 + b13 * a33,
-      b20 * a00 + b21 * a10 + b22 * a20 + b23 * a30,
-      b20 * a01 + b21 * a11 + b22 * a21 + b23 * a31,
-      b20 * a02 + b21 * a12 + b22 * a22 + b23 * a32,
-      b20 * a03 + b21 * a13 + b22 * a23 + b23 * a33,
-      b30 * a00 + b31 * a10 + b32 * a20 + b33 * a30,
-      b30 * a01 + b31 * a11 + b32 * a21 + b33 * a31,
-      b30 * a02 + b31 * a12 + b32 * a22 + b33 * a32,
-      b30 * a03 + b31 * a13 + b32 * a23 + b33 * a33,
-    ];
-  },
-
-  translation: function(tx, ty, tz) {
-    return [
-       1,  0,  0,  0,
-       0,  1,  0,  0,
-       0,  0,  1,  0,
-       tx, ty, tz, 1,
-    ];
-  },
-
-  xRotation: function(angleInRadians) {
-    var c = Math.cos(angleInRadians);
-    var s = Math.sin(angleInRadians);
-
-    return [
-      1, 0, 0, 0,
-      0, c, s, 0,
-      0, -s, c, 0,
-      0, 0, 0, 1,
-    ];
-  },
-
-  yRotation: function(angleInRadians) {
-    var c = Math.cos(angleInRadians);
-    var s = Math.sin(angleInRadians);
-
-    return [
-      c, 0, -s, 0,
-      0, 1, 0, 0,
-      s, 0, c, 0,
-      0, 0, 0, 1,
-    ];
-  },
-
-  zRotation: function(angleInRadians) {
-    var c = Math.cos(angleInRadians);
-    var s = Math.sin(angleInRadians);
-
-    return [
-       c, s, 0, 0,
-      -s, c, 0, 0,
-       0, 0, 1, 0,
-       0, 0, 0, 1,
-    ];
-  },
-
-  scaling: function(sx, sy, sz) {
-    return [
-      sx, 0,  0,  0,
-      0, sy,  0,  0,
-      0,  0, sz,  0,
-      0,  0,  0,  1,
-    ];
-  },
-
-  translate: function(m, tx, ty, tz) {
-    return m4.multiply(m, m4.translation(tx, ty, tz));
-  },
-
-  xRotate: function(m, angleInRadians) {
-    return m4.multiply(m, m4.xRotation(angleInRadians));
-  },
-
-  yRotate: function(m, angleInRadians) {
-    return m4.multiply(m, m4.yRotation(angleInRadians));
-  },
-
-  zRotate: function(m, angleInRadians) {
-    return m4.multiply(m, m4.zRotation(angleInRadians));
-  },
-
-  scale: function(m, sx, sy, sz) {
-    return m4.multiply(m, m4.scaling(sx, sy, sz));
-  },
-
-};
-
 function radToDeg(r) {
   return r * 180 / Math.PI;
 }
@@ -2571,147 +3068,6 @@ var frame = 0;
   Logger.debug('WebGLRenderer draw arrays @', getDateTime());
 */
 }
-
-var m4 = {
-
-  projection: function(width, height, depth) {
-    // Note: This matrix flips the Y axis so 0 is at the top.
-    return [
-       2 / width, 0, 0, 0,
-       0, -2 / height, 0, 0,
-       0, 0, 2 / depth, 0,
-      -1, 1, 0, 1,
-    ];
-  },
-
-  multiply: function(a, b) {
-    var a00 = a[0 * 4 + 0];
-    var a01 = a[0 * 4 + 1];
-    var a02 = a[0 * 4 + 2];
-    var a03 = a[0 * 4 + 3];
-    var a10 = a[1 * 4 + 0];
-    var a11 = a[1 * 4 + 1];
-    var a12 = a[1 * 4 + 2];
-    var a13 = a[1 * 4 + 3];
-    var a20 = a[2 * 4 + 0];
-    var a21 = a[2 * 4 + 1];
-    var a22 = a[2 * 4 + 2];
-    var a23 = a[2 * 4 + 3];
-    var a30 = a[3 * 4 + 0];
-    var a31 = a[3 * 4 + 1];
-    var a32 = a[3 * 4 + 2];
-    var a33 = a[3 * 4 + 3];
-    var b00 = b[0 * 4 + 0];
-    var b01 = b[0 * 4 + 1];
-    var b02 = b[0 * 4 + 2];
-    var b03 = b[0 * 4 + 3];
-    var b10 = b[1 * 4 + 0];
-    var b11 = b[1 * 4 + 1];
-    var b12 = b[1 * 4 + 2];
-    var b13 = b[1 * 4 + 3];
-    var b20 = b[2 * 4 + 0];
-    var b21 = b[2 * 4 + 1];
-    var b22 = b[2 * 4 + 2];
-    var b23 = b[2 * 4 + 3];
-    var b30 = b[3 * 4 + 0];
-    var b31 = b[3 * 4 + 1];
-    var b32 = b[3 * 4 + 2];
-    var b33 = b[3 * 4 + 3];
-    return [
-      b00 * a00 + b01 * a10 + b02 * a20 + b03 * a30,
-      b00 * a01 + b01 * a11 + b02 * a21 + b03 * a31,
-      b00 * a02 + b01 * a12 + b02 * a22 + b03 * a32,
-      b00 * a03 + b01 * a13 + b02 * a23 + b03 * a33,
-      b10 * a00 + b11 * a10 + b12 * a20 + b13 * a30,
-      b10 * a01 + b11 * a11 + b12 * a21 + b13 * a31,
-      b10 * a02 + b11 * a12 + b12 * a22 + b13 * a32,
-      b10 * a03 + b11 * a13 + b12 * a23 + b13 * a33,
-      b20 * a00 + b21 * a10 + b22 * a20 + b23 * a30,
-      b20 * a01 + b21 * a11 + b22 * a21 + b23 * a31,
-      b20 * a02 + b21 * a12 + b22 * a22 + b23 * a32,
-      b20 * a03 + b21 * a13 + b22 * a23 + b23 * a33,
-      b30 * a00 + b31 * a10 + b32 * a20 + b33 * a30,
-      b30 * a01 + b31 * a11 + b32 * a21 + b33 * a31,
-      b30 * a02 + b31 * a12 + b32 * a22 + b33 * a32,
-      b30 * a03 + b31 * a13 + b32 * a23 + b33 * a33,
-    ];
-  },
-
-  translation: function(tx, ty, tz) {
-    return [
-       1,  0,  0,  0,
-       0,  1,  0,  0,
-       0,  0,  1,  0,
-       tx, ty, tz, 1,
-    ];
-  },
-
-  xRotation: function(angleInRadians) {
-    var c = Math.cos(angleInRadians);
-    var s = Math.sin(angleInRadians);
-
-    return [
-      1, 0, 0, 0,
-      0, c, s, 0,
-      0, -s, c, 0,
-      0, 0, 0, 1,
-    ];
-  },
-
-  yRotation: function(angleInRadians) {
-    var c = Math.cos(angleInRadians);
-    var s = Math.sin(angleInRadians);
-
-    return [
-      c, 0, -s, 0,
-      0, 1, 0, 0,
-      s, 0, c, 0,
-      0, 0, 0, 1,
-    ];
-  },
-
-  zRotation: function(angleInRadians) {
-    var c = Math.cos(angleInRadians);
-    var s = Math.sin(angleInRadians);
-
-    return [
-       c, s, 0, 0,
-      -s, c, 0, 0,
-       0, 0, 1, 0,
-       0, 0, 0, 1,
-    ];
-  },
-
-  scaling: function(sx, sy, sz) {
-    return [
-      sx, 0,  0,  0,
-      0, sy,  0,  0,
-      0,  0, sz,  0,
-      0,  0,  0,  1,
-    ];
-  },
-
-  translate: function(m, tx, ty, tz) {
-    return m4.multiply(m, m4.translation(tx, ty, tz));
-  },
-
-  xRotate: function(m, angleInRadians) {
-    return m4.multiply(m, m4.xRotation(angleInRadians));
-  },
-
-  yRotate: function(m, angleInRadians) {
-    return m4.multiply(m, m4.yRotation(angleInRadians));
-  },
-
-  zRotate: function(m, angleInRadians) {
-    return m4.multiply(m, m4.zRotation(angleInRadians));
-  },
-
-  scale: function(m, sx, sy, sz) {
-    return m4.multiply(m, m4.scaling(sx, sy, sz));
-  },
-
-};
 
 function initVertexField(gl, positionBuffer, colorBuffer, frame) {
   var perspective=0;

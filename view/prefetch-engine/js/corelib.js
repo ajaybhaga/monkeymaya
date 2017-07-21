@@ -79,6 +79,9 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var fs = require('fs');
   var Q = require('q');
 
+  var WebGLText = require('webgl-text');
+//  import WebGLText from 'webgl-text';
+
 
   // Create parameters object
   var parameters = {
@@ -1184,9 +1187,34 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
   //gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
   // Put geometry data into buffer
   //setColors(gl);
+  Logger.debug('| Draw Scene |');
 
   // Draw scene
   drawScene(this, wireframe);
+
+  Logger.debug('| Draw Text |');
+
+  // Draw text
+/*
+  var text = new WebGLText(gl);
+  Logger.debug('WebGLText=',text);
+
+  text.setText({
+              text: 'Hello World!',
+              fontFamily: 'sans-serif',
+              fontSize: 100
+          });
+
+  text.render({
+            rotation: 0,
+            position: { x: 50, y: 50 },
+            center: { x: 100, y: 100 },
+            //resolution: this.props.dimensions,
+            size: { width: 300, height: 100 }
+        });
+*/
+var text = "Hello";
+Logger.debug('text=',text);
 
   return this;
 };

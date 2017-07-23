@@ -507,6 +507,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 
     var then = 0;
 */
+
+    var then = 0;
     // Draw the scene.
     function drawScene(now) {
 
@@ -516,8 +518,6 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
       var deltaTime = now - then;
       // Remember the current time for the next frame.
       then = now;
-
-      webglUtils.resizeCanvasToDisplaySize(gl.canvas);
 
       // Tell WebGL how to convert from clip space to pixels
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -599,7 +599,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
         gl.drawArrays(gl.TRIANGLES, 0, vertices.numVertices);
       });
 
-      requestAnimationFrame(drawScene);
+      // TODO: Export frame
     }
 
 
@@ -668,53 +668,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
     return shader;
   };
 
-/*
-  // Create the program and shaders
-  var textProgram = gl.createProgram();
 
-  var textVS = generateTextVertexShader();
-  var textFS = generateTextFragmentShader();
 
-  // Create and compile shader
-  var textVertexShader = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(textVertexShader, textVS);
-  gl.compileShader(textVertexShader);
-
-  // Add error handling
-  if (!gl.getShaderParameter(textVertexShader, gl.COMPILE_STATUS)) {
-    console.error(gl.getShaderInfoLog(textVertexShader));
-    return null;
-  }
-
-  // Create and compile shader
-  var textFragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(textFragmentShader, textFS);
-  gl.compileShader(textFragmentShader);
-
-  // Add error handling
-  if (!gl.getShaderParameter(textFragmentShader, gl.COMPILE_STATUS)) {
-    console.error(gl.getShaderInfoLog(textFragmentShader));
-    return null;
-  }
-
-  // Attach and link the shader
-  gl.attachShader(textProgram, textVertexShader);
-  gl.attachShader(textProgram, textFragmentShader);
-  gl.linkProgram(textProgram);
-
-  // Add error handling
-  if (!gl.getProgramParameter(textProgram, gl.LINK_STATUS)) {
-    var error = gl.getError();
-    var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
-    console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
-    return null;
-  }
-
-  // Delete the shader
-  gl.deleteShader(textFragmentShader);
-  gl.deleteShader(textVertexShader);
-
-*/
 
 // Need to enable program
   // Set the program code
@@ -2277,6 +2232,10 @@ function initialise() {
   createMesh();
   Logger.debug('Adding lights.');
   addLights();
+
+
+  loadFont();
+
   resize(bufferWidth, bufferHeight);
 }
 
@@ -2330,7 +2289,7 @@ function loadFont() {
         //console.log('images[i] =',images[i]);
 
         // Make space for extra alpha channel
-        var fullData =  new Uint8Array(fontTextureWidth*fontTextureHeight*3);
+        var fullData =  new Uint8Array(fontTextureWidth*fontTextureHeight*4);
         //Logger.debug('fullData length=',fullData.length);
 
         var pixelIndex = 0;
@@ -2339,28 +2298,82 @@ function loadFont() {
           fullData[j] = images[i].data[pixelIndex];
           fullData[j+1] = images[i].data[pixelIndex+1];
           fullData[j+2] = images[i].data[pixelIndex+2];
+          fullData[j+3] = 1.0;
           pixelIndex += 4;
         }
 
         //gifData.frames.push(fullData);
 
-        // Now that the image has loaded make copy it to the texture.
-        gl.bindTexture(gl.TEXTURE_2D, glyphTex);
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fullData);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        if (!fullData) {
+          Logger.error('** FAILED TO LOAD FONT TEXTURE **');
+        } else {
+          // Now that the image has loaded make copy it to the texture.
+          gl.bindTexture(gl.TEXTURE_2D, glyphTex);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
 
+          // TODO: Fix fullData type error
 
-        progressBar('Storing font texture data (' + fontFile + ')', images.length, i);
+          Logger.info('fullData.length=',fullData.length);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fullData);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+          progressBar('Storing font texture data (' + fontFile + ')', images.length, i);
+          return 0;
+        }
       }
 
       Logger.debug('Loaded font texture data.');
 
     }).then(function() {
-      Logger.debug('Post font texture loading operations: NO OP');
+      Logger.debug('| Creating text program |');
+
+      // Create the program and shaders
+      var textProgram = gl.createProgram();
+
+      var textVS = generateTextVertexShader();
+      var textFS = generateTextFragmentShader();
+
+      // Create and compile shader
+      var textVertexShader = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(textVertexShader, textVS);
+      gl.compileShader(textVertexShader);
+
+      // Add error handling
+      if (!gl.getShaderParameter(textVertexShader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(textVertexShader));
+        return null;
+      }
+
+      // Create and compile shader
+      var textFragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(textFragmentShader, textFS);
+      gl.compileShader(textFragmentShader);
+
+      // Add error handling
+      if (!gl.getShaderParameter(textFragmentShader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(textFragmentShader));
+        return null;
+      }
+
+      // Attach and link the shader
+      gl.attachShader(textProgram, textVertexShader);
+      gl.attachShader(textProgram, textFragmentShader);
+      gl.linkProgram(textProgram);
+
+      // Add error handling
+      if (!gl.getProgramParameter(textProgram, gl.LINK_STATUS)) {
+        var error = gl.getError();
+        var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
+        console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
+        return null;
+      }
+
+      // Delete the shader
+      gl.deleteShader(textFragmentShader);
+      gl.deleteShader(textVertexShader);
+
     }).done();
   });
 }

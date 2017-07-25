@@ -1542,13 +1542,13 @@ var fieldOfViewRadians = degToRad(60);
       // Tell WebGL how to convert from clip space to pixels
     //  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-      gl.enable(gl.CULL_FACE);
+/*      gl.enable(gl.CULL_FACE);
       gl.enable(gl.DEPTH_TEST);
       gl.disable(gl.BLEND);
       gl.depthMask(true);
-
+*/
       // Clear the canvas AND the depth buffer.
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    //  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
       // Compute the matrices used for all objects
       var aspect = bufferWidth / bufferHeight;
@@ -1575,9 +1575,7 @@ var fieldOfViewRadians = degToRad(60);
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.depthMask(false);
 
-      Logger.debug('| Text Step 4 |');
-
-      Logger.debug('| Creating text program |');
+      Logger.debug('| Creating Text Program |');
 
       // Create the program and shaders
       var textProgram = gl.createProgram();
@@ -1609,8 +1607,23 @@ var fieldOfViewRadians = degToRad(60);
 
       // Attach and link the shader
       gl.attachShader(textProgram, textVertexShader);
+      var error = gl.getError();
+      var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
+      Logger.debug('Attach text vertex shader -> VALIDATE_STATUS: '+status+'\nERROR: '+error);
+
+      // TODO: Determine why text vertex shader is failing
+
       gl.attachShader(textProgram, textFragmentShader);
+      var error = gl.getError();
+      var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
+      Logger.debug('Attach text fragment shader -> VALIDATE_STATUS: '+status+'\nERROR: '+error);
+
+
       gl.linkProgram(textProgram);
+      var error = gl.getError();
+      var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
+      Logger.debug('Link program -> VALIDATE_STATUS: '+status+'\nERROR: '+error);
+
 
       // Add error handling
       if (!gl.getProgramParameter(textProgram, gl.LINK_STATUS)) {
@@ -1628,9 +1641,13 @@ var fieldOfViewRadians = degToRad(60);
       // setup to draw the text.
       // Because every letter uses the same attributes and the same progarm
       // we only need to do this once.
-      gl.useProgram(textProgram);
 
       Logger.debug('| Using Text Program |');
+      gl.useProgram(textProgram);
+
+      var error = gl.getError();
+      var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
+      Logger.debug('Using text program -> VALIDATE_STATUS: '+status+'\nERROR: '+error);
 
       // lookup uniforms
       textMatrixLocation = gl.getUniformLocation(textProgram, "u_matrix");
@@ -1646,9 +1663,6 @@ var fieldOfViewRadians = degToRad(60);
       //webglutils.webglUtils.setBuffersAndAttributes(gl, textProgramInfo, textBufferInfo);
 
       textPositions.forEach(function(pos, ndx) {
-
-        Logger.debug('| Text Position |');
-
 
         var name = names[ndx];
         var s = name + ":" + pos[0].toFixed(0) + "," + pos[1].toFixed(0) + "," + pos[2].toFixed(0);
@@ -1687,14 +1701,14 @@ var fieldOfViewRadians = degToRad(60);
 
         Logger.debug('| Set Text Matrix Uniform |');
         // Set the matrix.
-        gl.uniformMatrix4fv(textMatrixLocation, false, textMatrix);
+        //gl.uniformMatrix4fv(textMatrixLocation, false, textMatrix);
 
         // set texture uniform
         //m4.copy(textMatrix, textUniforms.u_matrix);
         //webglutils.webglUtils.setUniforms(textProgramInfo, textUniforms);
 
         // Draw the text.
-        gl.drawArrays(gl.TRIANGLES, 0, vertices.numVertices);
+//        gl.drawArrays(gl.TRIANGLES, 0, vertices.numVertices);
       });
       Logger.debug('| Text Step 6 |');
 
@@ -1703,8 +1717,6 @@ var fieldOfViewRadians = degToRad(60);
 
       Logger.debug('| End of Draw Text |');
     }
-
-
 
   function generateTextVertexShader() {
 
@@ -2812,12 +2824,12 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
 
   if (this.unsupported) return;
 
-  positionLocation = gl.getAttribLocation(program, "aPosition");
+  positionLocation = gl.getAttribLocation(program, "a_position");
   colorLocation = gl.getAttribLocation(program, "aColor");
 
   // look up where the vertex data needs to go.
   // lookup uniforms
-  matrixLocation = gl.getUniformLocation(program, "uMatrix");
+  matrixLocation = gl.getUniformLocation(program, "u_matrix");
 
 
   //Logger.debug('matrixLocation=', matrixLocation);
@@ -2833,7 +2845,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
   // Draw scene
   drawScene(this, wireframe);
 
-  //drawText();
+  drawText();
 
   // Draw text
 /*
@@ -2930,7 +2942,7 @@ FSS.WebGLRenderer.prototype.buildProgram = function(lights, wireframe) {
       // Add the program attributes
       program.attributes = {
         //side:     this.buildBuffer(program, 'attribute', 'aSide',     1, 'f' ),
-        position: this.buildBuffer(program, 'attribute', 'aPosition', 3, 'v3'),
+        position: this.buildBuffer(program, 'attribute', 'a_position', 3, 'v3'),
         //centroid: this.buildBuffer(program, 'attribute', 'aCentroid', 3, 'v3'),
         //normal:   this.buildBuffer(program, 'attribute', 'aNormal',   3, 'v3'),
         //ambient:  this.buildBuffer(program, 'attribute', 'aAmbient',  4, 'v4'),
@@ -3013,7 +3025,7 @@ FSS.WebGLRenderer.VS = function(lights) {
 
   // Attributes
 //  'attribute float aSide;',
-  'attribute vec4 aPosition;',
+  'attribute vec4 a_position;',
 //  'attribute vec3 aCentroid;',
 //  'attribute vec3 aNormal;',
 //  'attribute vec4 aAmbient;',
@@ -3029,7 +3041,7 @@ FSS.WebGLRenderer.VS = function(lights) {
   'uniform vec4 uLightAmbient[LIGHTS];',
   'uniform vec4 uLightDiffuse[LIGHTS];',
 */
-  'uniform mat4 uMatrix;',
+  'uniform mat4 u_matrix;',
 
   // Varyings
   'varying vec4 v_color;',
@@ -3044,7 +3056,7 @@ FSS.WebGLRenderer.VS = function(lights) {
 
 
     // Divide x and y by z.
-    'gl_Position = uMatrix * aPosition;',
+    'gl_Position = u_matrix * a_position;',
     //'gl_Position = u_matrix * a_position;',
 
     // Pass the color to the fragment shader.

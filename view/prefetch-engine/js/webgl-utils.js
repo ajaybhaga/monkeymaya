@@ -28,6 +28,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+ /* Edited by Ajay Bhaga for Node.js */
 
 (function(root, factory) {  // eslint-disable-line
   if (typeof define === 'function' && define.amd) {
@@ -665,10 +666,6 @@
    */
   function createProgramInfo(
       gl, shaderSources, opt_attribs, opt_locations, opt_errorCallback) {
-    shaderSources = shaderSources.map(function(source) {
-      var script = document.getElementById(source);
-      return script ? script.text : source;
-    });
     var program = webglUtils.createProgramFromSources(gl, shaderSources, opt_attribs, opt_locations, opt_errorCallback);
     if (!program) {
       return null;
@@ -1243,26 +1240,6 @@
     });
   }
 
-  var isIE = /*@cc_on!@*/false || !!document.documentMode;
-  // Edge 20+
-  var isEdge = !isIE && !!window.StyleMedia;
-  if (isEdge) {
-    // Hack for Edge. Edge's WebGL implmentation is crap still and so they
-    // only respond to "experimental-webgl". I don't want to clutter the
-    // examples with that so his hack works around it
-    HTMLCanvasElement.prototype.getContext = function(origFn) {
-      return function() {
-        var args = arguments;
-        var type = args[0];
-        if (type === "webgl") {
-          args = [].slice.call(arguments);
-          args[0] = "experimental-webgl";
-        }
-        return origFn.apply(this, args);
-      };
-    }(HTMLCanvasElement.prototype.getContext);
-  }
-
   return {
     createAugmentedTypedArray: createAugmentedTypedArray,
     createAttribsFromArrays: createAttribsFromArrays,
@@ -1286,4 +1263,3 @@
   };
 
 }));
-

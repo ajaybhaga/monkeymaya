@@ -312,11 +312,12 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
      * @memberOf module:webgl-3d-math
      */
     lookAt: function(cameraPosition, target, up, dst) {
+
       dst = dst || new Float32Array(16);
-      var zAxis = normalize(
-          subtractVectors(cameraPosition, target));
-      var xAxis = normalize(cross(up, zAxis));
-      var yAxis = normalize(cross(zAxis, xAxis));
+
+      var zAxis = this.normalize(this.subtractVectors(cameraPosition, target));
+      var xAxis = this.normalize(this.cross(up, zAxis));
+      var yAxis = this.normalize(this.cross(zAxis, xAxis));
 
       dst[ 0] = xAxis[0];
       dst[ 1] = xAxis[1];
@@ -1212,11 +1213,15 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
 
   // Log messages will be written to the window's console.
   var Logger = require('js-logger');
+  Logger.useDefaults();
+
   var request = require('request');
   var GIFEncoder = require('gifencoder');
   var Canvas = require('canvas');
   var fs = require('fs');
   var Q = require('q');
+
+  var webglutils = require('./webgl-utils');
 
   // Create parameters object
   var parameters = {
@@ -1247,7 +1252,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   }
 
   var version = 0.1;
-  Logger.useDefaults();
+
   Logger.info('==========================================');
   Logger.info('Monkey Maya Video Processing Engine v' + version);
   Logger.info('==========================================');
@@ -1266,7 +1271,6 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   // look up where the vertex data needs to go.
   var positionLocation;
   var colorLocation;
-
   // lookup uniforms
   var matrixLocation;
 
@@ -1278,6 +1282,13 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   // functions
 
   // WebGL text
+
+  // look up where the vertex data needs to go.
+  var textMatrixLocation;
+  //var textLocation;
+  // lookup uniforms
+  //var matrixLocation;
+
   var fontInfo = {
     letterHeight: 8,
     spaceWidth: 8,
@@ -1462,6 +1473,66 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
     var then = 0;
 */
 
+var buildShader = function(type, source) {
+  // Create and compile shader
+  var shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+
+  // Add error handling
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(shader));
+    return null;
+  }
+
+  // Return the shader
+  return shader;
+};
+
+
+/**
+   * Sets attributes and buffers including the `ELEMENT_ARRAY_BUFFER` if appropriate
+   *
+   * Example:
+   *
+   *     var programInfo = createProgramInfo(
+   *         gl, ["some-vs", "some-fs");
+   *
+   *     var arrays = {
+   *       position: { numComponents: 3, data: [0, 0, 0, 10, 0, 0, 0, 10, 0, 10, 10, 0], },
+   *       texcoord: { numComponents: 2, data: [0, 0, 0, 1, 1, 0, 1, 1],                 },
+   *     };
+   *
+   *     var bufferInfo = createBufferInfoFromArrays(gl, arrays);
+   *
+   *     gl.useProgram(programInfo.program);
+   *
+   * This will automatically bind the buffers AND set the
+   * attributes.
+   *
+   *     setBuffersAndAttributes(programInfo.attribSetters, bufferInfo);
+   *
+   * For the example above it is equivilent to
+   *
+   *     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+   *     gl.enableVertexAttribArray(a_positionLocation);
+   *     gl.vertexAttribPointer(a_positionLocation, 3, gl.FLOAT, false, 0, 0);
+   *     gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+   *     gl.enableVertexAttribArray(a_texcoordLocation);
+   *     gl.vertexAttribPointer(a_texcoordLocation, 4, gl.FLOAT, false, 0, 0);
+   *
+   * @param {WebGLRenderingContext} gl A WebGLRenderingContext.
+   * @param {Object.<string, function>} setters Attribute setters as returned from `createAttributeSetters`
+   * @param {module:webgl-utils.BufferInfo} buffers a BufferInfo as returned from `createBufferInfoFromArrays`.
+   * @memberOf module:webgl-utils
+   */
+  function setBuffersAndAttributes(gl, setters, buffers) {
+    setAttributes(setters, buffers.attribs);
+    if (buffers.indices) {
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+    }
+  }
+
 var fieldOfViewRadians = degToRad(60);
 
     // Draw the scene.
@@ -1478,8 +1549,6 @@ var fieldOfViewRadians = degToRad(60);
 
       // Clear the canvas AND the depth buffer.
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-      Logger.debug('| Text Step 1 |');
 
       // Compute the matrices used for all objects
       var aspect = bufferWidth / bufferHeight;
@@ -1500,9 +1569,7 @@ var fieldOfViewRadians = degToRad(60);
       var viewMatrix = m4.inverse(cameraMatrix);
       Logger.debug('viewMatrix=',viewMatrix);
 
-      Logger.debug('| Text Step 3 |');
-
-      var textPositions = [];
+      var textPositions = [[0, 0, 0]];
 
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -1510,17 +1577,73 @@ var fieldOfViewRadians = degToRad(60);
 
       Logger.debug('| Text Step 4 |');
 
+      Logger.debug('| Creating text program |');
+
+      // Create the program and shaders
+      var textProgram = gl.createProgram();
+
+      var textVS = generateTextVertexShader();
+      var textFS = generateTextFragmentShader();
+
+      // Create and compile shader
+      var textVertexShader = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(textVertexShader, textVS);
+      gl.compileShader(textVertexShader);
+
+      // Add error handling
+      if (!gl.getShaderParameter(textVertexShader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(textVertexShader));
+        return null;
+      }
+
+      // Create and compile shader
+      var textFragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(textFragmentShader, textFS);
+      gl.compileShader(textFragmentShader);
+
+      // Add error handling
+      if (!gl.getShaderParameter(textFragmentShader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(textFragmentShader));
+        return null;
+      }
+
+      // Attach and link the shader
+      gl.attachShader(textProgram, textVertexShader);
+      gl.attachShader(textProgram, textFragmentShader);
+      gl.linkProgram(textProgram);
+
+      // Add error handling
+      if (!gl.getProgramParameter(textProgram, gl.LINK_STATUS)) {
+        var error = gl.getError();
+        var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
+        console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
+        return null;
+      }
+
+      // Delete the shader
+      gl.deleteShader(textFragmentShader);
+      gl.deleteShader(textVertexShader);
 
       // draw the text
       // setup to draw the text.
       // Because every letter uses the same attributes and the same progarm
       // we only need to do this once.
-      gl.useProgram(textProgramInfo.program);
+      gl.useProgram(textProgram);
 
-      Logger.debug('| Text Step 5 |');
+      Logger.debug('| Using Text Program |');
 
-// missing
-      //webglUtils.setBuffersAndAttributes(gl, textProgramInfo, textBufferInfo);
+      // lookup uniforms
+      textMatrixLocation = gl.getUniformLocation(textProgram, "u_matrix");
+
+/*
+      var positionLocation = gl.getAttribLocation(program, "aPosition");
+      var colorLocation = gl.getAttribLocation(program, "aColor");
+      // look up where the vertex data needs to go.
+      // lookup uniforms
+      var matrixLocation = gl.getUniformLocation(program, "uMatrix");
+*/
+
+      //webglutils.webglUtils.setBuffersAndAttributes(gl, textProgramInfo, textBufferInfo);
 
       textPositions.forEach(function(pos, ndx) {
 
@@ -1529,6 +1652,8 @@ var fieldOfViewRadians = degToRad(60);
 
         var name = names[ndx];
         var s = name + ":" + pos[0].toFixed(0) + "," + pos[1].toFixed(0) + "," + pos[2].toFixed(0);
+        Logger.debug('| Generating vertices for: ' + s + ' |');
+
         var vertices = makeVerticesForString(fontInfo, s);
 
         // update the buffers
@@ -1539,7 +1664,6 @@ var fieldOfViewRadians = degToRad(60);
         gl.bufferData(gl.ARRAY_BUFFER, vertices.arrays.texcoord, gl.DYNAMIC_DRAW);
 
         // use just the position of the 'F' for the text
-
         // because pos is in view space that means it's a vector from the eye to
         // some position. So translate along that vector back toward the eye some distance
         var fromEye = m4.normalize(pos);
@@ -1547,16 +1671,27 @@ var fieldOfViewRadians = degToRad(60);
         var viewX = pos[0] - fromEye[0] * amountToMoveTowardEye;
         var viewY = pos[1] - fromEye[1] * amountToMoveTowardEye;
         var viewZ = pos[2] - fromEye[2] * amountToMoveTowardEye;
-        var desiredTextScale = -1 / gl.canvas.height * 2;  // 1x1 pixels
+        var desiredTextScale = -1 / bufferHeight * 2;  // 1x1 pixels
         var scale = viewZ * desiredTextScale;
 
         var textMatrix = m4.translate(projectionMatrix, viewX, viewY, viewZ);
         // scale the F to the size we need it.
         textMatrix = m4.scale(textMatrix, scale, scale, 1);
+        Logger.debug('textMatrix=',textMatrix);
+
+        matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
+        matrix = m4.xRotate(matrix, rotation[0]);
+        matrix = m4.yRotate(matrix, rotation[1]);
+        matrix = m4.zRotate(matrix, rotation[2]);
+        matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
+
+        Logger.debug('| Set Text Matrix Uniform |');
+        // Set the matrix.
+        gl.uniformMatrix4fv(textMatrixLocation, false, textMatrix);
 
         // set texture uniform
-        m4.copy(textMatrix, textUniforms.u_matrix);
-        webglUtils.setUniforms(textProgramInfo, textUniforms);
+        //m4.copy(textMatrix, textUniforms.u_matrix);
+        //webglutils.webglUtils.setUniforms(textProgramInfo, textUniforms);
 
         // Draw the text.
         gl.drawArrays(gl.TRIANGLES, 0, vertices.numVertices);
@@ -2684,10 +2819,8 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
   // lookup uniforms
   matrixLocation = gl.getUniformLocation(program, "uMatrix");
 
+
   //Logger.debug('matrixLocation=', matrixLocation);
-
-
-
 
   // Create a buffer to put colors in
   //colorBuffer = gl.createBuffer();
@@ -2700,7 +2833,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
   // Draw scene
   drawScene(this, wireframe);
 
-  drawText();
+  //drawText();
 
   // Draw text
 /*
@@ -3295,52 +3428,6 @@ function loadFont() {
       Logger.debug('Loaded font texture data.');
 
     }).then(function() {
-      Logger.debug('| Creating text program |');
-
-      // Create the program and shaders
-      var textProgram = gl.createProgram();
-
-      var textVS = generateTextVertexShader();
-      var textFS = generateTextFragmentShader();
-
-      // Create and compile shader
-      var textVertexShader = gl.createShader(gl.VERTEX_SHADER);
-      gl.shaderSource(textVertexShader, textVS);
-      gl.compileShader(textVertexShader);
-
-      // Add error handling
-      if (!gl.getShaderParameter(textVertexShader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(textVertexShader));
-        return null;
-      }
-
-      // Create and compile shader
-      var textFragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-      gl.shaderSource(textFragmentShader, textFS);
-      gl.compileShader(textFragmentShader);
-
-      // Add error handling
-      if (!gl.getShaderParameter(textFragmentShader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(textFragmentShader));
-        return null;
-      }
-
-      // Attach and link the shader
-      gl.attachShader(textProgram, textVertexShader);
-      gl.attachShader(textProgram, textFragmentShader);
-      gl.linkProgram(textProgram);
-
-      // Add error handling
-      if (!gl.getProgramParameter(textProgram, gl.LINK_STATUS)) {
-        var error = gl.getError();
-        var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
-        console.error('Could not initialise shader.\nVALIDATE_STATUS: '+status+'\nERROR: '+error);
-        return null;
-      }
-
-      // Delete the shader
-      gl.deleteShader(textFragmentShader);
-      gl.deleteShader(textVertexShader);
 
     }).done();
   });
@@ -4017,6 +4104,7 @@ var frame = 0;
 
   // Set the matrix.
   gl.uniformMatrix4fv(matrixLocation, false, matrix);
+
   //Logger.debug('matrix=', matrix);
 
   // Update frame limit

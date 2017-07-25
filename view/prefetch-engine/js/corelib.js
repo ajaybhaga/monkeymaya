@@ -1624,6 +1624,7 @@ var fieldOfViewRadians = degToRad(60);
       var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
       Logger.debug('Link program -> VALIDATE_STATUS: '+status+'\nERROR: '+error);
 
+      Logger.debug('gl.getProgramInfoLog(textProgram)='+gl.getProgramInfoLog(textProgram));
 
       // Add error handling
       if (!gl.getProgramParameter(textProgram, gl.LINK_STATUS)) {
@@ -1701,7 +1702,7 @@ var fieldOfViewRadians = degToRad(60);
 
         Logger.debug('| Set Text Matrix Uniform |');
         // Set the matrix.
-        //gl.uniformMatrix4fv(textMatrixLocation, false, textMatrix);
+        gl.uniformMatrix4fv(textMatrixLocation, false, textMatrix);
 
         // set texture uniform
         //m4.copy(textMatrix, textUniforms.u_matrix);
@@ -1728,14 +1729,13 @@ var fieldOfViewRadians = degToRad(60);
     // Attributes
     'attribute vec4 a_position;',
     'attribute vec2 a_texcoord;',
-
+    'attribute vec4 a_color;',
 
     'uniform mat4 u_matrix;',
 
     // Varyings
-    //'varying vec4 v_color;',
+    'varying vec4 v_color;',
     'varying vec2 v_texcoord;',
-
 
     // Main
     'void main() {',
@@ -2825,7 +2825,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
   if (this.unsupported) return;
 
   positionLocation = gl.getAttribLocation(program, "a_position");
-  colorLocation = gl.getAttribLocation(program, "aColor");
+  colorLocation = gl.getAttribLocation(program, "a_color");
 
   // look up where the vertex data needs to go.
   // lookup uniforms
@@ -3020,48 +3020,27 @@ FSS.WebGLRenderer.VS = function(lights) {
   // Precision
   'precision mediump float;',
 
-  // Lights
-//  '#define LIGHTS ' + lights,
-
   // Attributes
-//  'attribute float aSide;',
   'attribute vec4 a_position;',
-//  'attribute vec3 aCentroid;',
-//  'attribute vec3 aNormal;',
-//  'attribute vec4 aAmbient;',
-//  'attribute vec4 aDiffuse;',
+  'attribute vec2 a_texcoord;',
+  'attribute vec4 a_color;',
 
-  //'attribute vec4 a_position;',
-  'attribute vec4 aColor;',
-
-/*
   // Uniforms
-  'uniform vec3 uResolution;',
-  'uniform vec3 uLightPosition[LIGHTS];',
-  'uniform vec4 uLightAmbient[LIGHTS];',
-  'uniform vec4 uLightDiffuse[LIGHTS];',
-*/
   'uniform mat4 u_matrix;',
 
   // Varyings
   'varying vec4 v_color;',
+  'varying vec2 v_texcoord;',
 
   // Main
   'void main() {',
-
-    // Set color
-//    'v_color = vec4(1.0,0.0,0.0,1.0);',
-//    'vColor = aVertexColor;',
-//    'gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);',
-
 
     // Divide x and y by z.
     'gl_Position = u_matrix * a_position;',
     //'gl_Position = u_matrix * a_position;',
 
     // Pass the color to the fragment shader.
-//    'v_color = aColor;',
-    'v_color = vec4(aColor[0],aColor[1],aColor[2],1.0);',
+    'v_color = vec4(a_color[0],a_color[1],a_color[2],1.0);',
 //    'v_color = vec4(1.0,1.0,0.0,0.2);',
 
 //    'v_color += vec4(aPosition[2]/255.0,aPosition[2]/255.0,aPosition[2]/255.0,1.0);',

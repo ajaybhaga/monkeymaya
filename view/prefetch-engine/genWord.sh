@@ -1,5 +1,6 @@
 #!/bin/bash
-word=$1
+extraword=green
+word=${1}-${extraword}
 max=30
 
 mkdir ../viewer/images/${word}

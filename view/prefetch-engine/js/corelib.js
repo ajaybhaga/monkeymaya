@@ -36,7 +36,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var bufferHeight = 1024;
 
   var frameCount = 1;
-  var frameLimit = 15;
+  var frameLimit = 20;
   var frameDivider = 1;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)

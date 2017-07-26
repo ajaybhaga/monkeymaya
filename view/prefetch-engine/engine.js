@@ -195,10 +195,14 @@ keywords.push('sexy');
 keywords.push('seductive');
 keywords.push('euphoric');*/
 keywords.push('raging');
-keywords.push('vibrant');
+//keywords.push('vibrant');
 
-// Single rneder
-Q.fcall(function () { fetchGifURL(keywords[0]) });//.then(Q.fcall(function () { fetchGifURL(keywords[1]) }));
+console.log('Arguments=',process.argv[2]);
+
+// Single render
+Q.fcall(function () { fetchGifURL(process.argv[2]) });//.then(Q.fcall(function () { fetchGifURL(keywords[1]) }));
+
+//Q.fcall(function () { fetchGifURL(keywords[0]) });//.then(Q.fcall(function () { fetchGifURL(keywords[1]) }));
 
 
 //fetchGifURL(keywords[0]).then(fetchGifURL(keywords[1]));

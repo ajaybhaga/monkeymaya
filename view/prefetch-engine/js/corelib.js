@@ -36,8 +36,8 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var bufferHeight = 1024;
 
   var frameCount = 1;
-  var frameLimit = 10;
-  var frameDivider = 8;
+  var frameLimit = 15;
+  var frameDivider = 1;
   var lastFrameRenderTime = new Date().getTime();
   var skipFirst = 0; // Skips rendering of first black frame (defect)
 
@@ -63,7 +63,7 @@ Thanks to Matthew Wagerfield & Maksim Surguy for portions of supporting code.
   var zoomIn = true;
   var maxScale = 2.5;
 
-  var impulseLevel = 25;
+  var impulseLevel = 40;
 
   var gifData = {
     frames: [],
@@ -1540,15 +1540,15 @@ var fieldOfViewRadians = degToRad(60);
       Logger.debug('| Draw Text |');
 
       // Tell WebGL how to convert from clip space to pixels
-    //  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+      gl.viewport(0, 0, bufferWidth, bufferHeight);
 
-/*      gl.enable(gl.CULL_FACE);
+      gl.enable(gl.CULL_FACE);
       gl.enable(gl.DEPTH_TEST);
       gl.disable(gl.BLEND);
       gl.depthMask(true);
-*/
+
       // Clear the canvas AND the depth buffer.
-    //  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      //gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
       // Compute the matrices used for all objects
       var aspect = bufferWidth / bufferHeight;
@@ -1605,19 +1605,20 @@ var fieldOfViewRadians = degToRad(60);
         return null;
       }
 
+      Logger.debug('textVertexShader=' + textVertexShader);
+      Logger.debug('textFragmentShader=' + textFragmentShader);
+      Logger.debug('textProgram=' + textProgram);
+
       // Attach and link the shader
       gl.attachShader(textProgram, textVertexShader);
       var error = gl.getError();
       var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
       Logger.debug('Attach text vertex shader -> VALIDATE_STATUS: '+status+'\nERROR: '+error);
 
-      // TODO: Determine why text vertex shader is failing
-
       gl.attachShader(textProgram, textFragmentShader);
       var error = gl.getError();
       var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
       Logger.debug('Attach text fragment shader -> VALIDATE_STATUS: '+status+'\nERROR: '+error);
-
 
       gl.linkProgram(textProgram);
       var error = gl.getError();
@@ -1670,6 +1671,7 @@ var fieldOfViewRadians = degToRad(60);
         Logger.debug('| Generating vertices for: ' + s + ' |');
 
         var vertices = makeVerticesForString(fontInfo, s);
+        Logger.debug('vertices=',vertices);
 
         // update the buffers
         textBufferInfo.attribs.a_position.numComponents = 2;
@@ -1694,12 +1696,6 @@ var fieldOfViewRadians = degToRad(60);
         textMatrix = m4.scale(textMatrix, scale, scale, 1);
         Logger.debug('textMatrix=',textMatrix);
 
-        matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
-        matrix = m4.xRotate(matrix, rotation[0]);
-        matrix = m4.yRotate(matrix, rotation[1]);
-        matrix = m4.zRotate(matrix, rotation[2]);
-        matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
-
         Logger.debug('| Set Text Matrix Uniform |');
         // Set the matrix.
         gl.uniformMatrix4fv(textMatrixLocation, false, textMatrix);
@@ -1709,12 +1705,14 @@ var fieldOfViewRadians = degToRad(60);
         //webglutils.webglUtils.setUniforms(textProgramInfo, textUniforms);
 
         // Draw the text.
-//        gl.drawArrays(gl.TRIANGLES, 0, vertices.numVertices);
+        gl.drawArrays(gl.TRIANGLES, 0, vertices.numVertices);
+
+        var error = gl.getError();
+        var status = gl.getProgramParameter(textProgram, gl.VALIDATE_STATUS);
+        Logger.debug('Draw Arrays -> VALIDATE_STATUS: '+status+'\nERROR: '+error);
+
       });
       Logger.debug('| Text Step 6 |');
-
-
-      // TODO: Export frame
 
       Logger.debug('| End of Draw Text |');
     }
@@ -1740,10 +1738,15 @@ var fieldOfViewRadians = degToRad(60);
     // Main
     'void main() {',
 
-      'gl_Position = u_matrix * a_position;',
+        'gl_Position = u_matrix * a_position;',
 
         // Pass the texcoord to the fragment shader.
         'v_texcoord = a_texcoord;',
+
+        // Pass the color to the fragment shader.
+    //    'v_color = vec4(a_color[0],a_color[1],a_color[2],1.0);',
+        'v_color = vec4(1.0,1.0,0.0,0.2);',
+
       // Clamp color
   //    'v_color = clamp(v_color, 0.0, 1.0);',
 
@@ -2845,7 +2848,7 @@ FSS.WebGLRenderer.prototype.render = function(scene, program, wireframe) {
   // Draw scene
   drawScene(this, wireframe);
 
-  drawText();
+  //drawText();
 
   // Draw text
 /*
@@ -3491,7 +3494,8 @@ function loadGif(inputGifFile, keyword) {
     return initExportGif(outputGifFile).then(function() {
       return renderer.buildProgram(scene.lights.length, wireframe).then(function() {
         Logger.debug('Build and execute program completed.');
-
+        finishExportGif();
+        return 0;
       }).done();
     });
     //Logger.debug(program);
@@ -3719,6 +3723,11 @@ function finishExportGif() {
   gifData.widths = [];
   gifData.heights = [];
   frameCount = 1;
+
+  //
+
+  // expecting something close to 500
+  setTimeout(function(){ process.exit(); }, 2000);
 
 }
 
@@ -4099,7 +4108,7 @@ var frame = 0;
   //Logger.debug('matrix=', matrix);
 
   // Update frame limit
-  frameLimit = Math.round(gifData.frames.length / frameDivider);
+  //frameLimit = Math.round(gifData.frames.length / frameDivider);
   Logger.debug('Total gifData.frames=', gifData.frames.length);
 
   //Logger.debug('gl errors=',gl.getError());

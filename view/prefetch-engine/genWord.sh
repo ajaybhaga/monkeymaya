@@ -1,5 +1,5 @@
 #!/bin/bash
-extraword=green
+extraword=${2}
 word=${1}-${extraword}
 max=30
 
